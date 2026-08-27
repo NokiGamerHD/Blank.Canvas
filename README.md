@@ -15,7 +15,7 @@ canvas on every hit. Over time, the battlefield becomes your own painting.
 
 ## Play
 
-🎮 [Play in the browser (itch.io)](LINK_DO_SEU_JOGO_AQUI)
+🎮 [Play in the browser (itch.io)](https://nokigamerhd.itch.io/blank-canvas)
 
 Or open the project in [Godot 4.3+](https://godotengine.org/download).
 
@@ -51,11 +51,7 @@ to desktop and Web.
 scenes/     Godot scenes (menu, editors, arena, UI)
 scripts/    source code (GDScript)
 assets/     sprites, fonts, shaders, backgrounds, audio
-docs/       development history and architecture decisions
 ```
-
-For the complete history of technical decisions and how the project was
-built, see [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ## License
 
