@@ -1,0 +1,55 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/arena.gd" id="1_arena"]
+[ext_resource type="Script" path="res://scripts/game/paint_canvas.gd" id="2_canvas"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://scripts/game/wave_manager.gd" id="4_waves"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/progression_screen.tscn" id="6_prog"]
+[ext_resource type="PackedScene" path="res://scenes/ui/in_run_ability_creator.tscn" id="7_increator"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_screen.tscn" id="8_pause"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/canvas_grain.png" id="9_grain"]
+[ext_resource type="Shader" path="res://assets/shaders/canvas_board.gdshader" id="10_boardshader"]
+[ext_resource type="Script" path="res://scripts/game/board_canvas.gd" id="11_boardscript"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_board"]
+shader = ExtResource("10_boardshader")
+shader_parameter/tile_count = 42.0
+shader_parameter/border_color = Color(0.2, 0.2, 0.2, 1)
+shader_parameter/border_thickness = 0.006
+shader_parameter/inner_shadow_color = Color(0, 0, 0, 0.06)
+shader_parameter/inner_shadow_reach = 0.03
+
+[node name="Arena" type="Node2D"]
+script = ExtResource("1_arena")
+
+[node name="Boundaries" type="StaticBody2D" parent="."]
+
+[node name="BoardCanvas" type="Sprite2D" parent="."]
+texture_filter = 1
+material = SubResource("ShaderMaterial_board")
+texture = ExtResource("9_grain")
+script = ExtResource("11_boardscript")
+
+[node name="PaintCanvas" type="Node2D" parent="."]
+script = ExtResource("2_canvas")
+
+[node name="Enemies" type="Node2D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+
+[node name="Projectiles" type="Node2D" parent="." groups=["projectiles_container"]]
+
+[node name="Effects" type="Node2D" parent="." groups=["effects_container"]]
+
+[node name="WaveManager" type="Node" parent="."]
+script = ExtResource("4_waves")
+enemies_container_path = NodePath("../Enemies")
+
+[node name="HUD" parent="." instance=ExtResource("5_hud")]
+
+[node name="ProgressionScreen" parent="." instance=ExtResource("6_prog")]
+
+[node name="InRunAbilityCreator" parent="." instance=ExtResource("7_increator")]
+
+[node name="PauseScreen" parent="." instance=ExtResource("8_pause")]

@@ -1,0 +1,145 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/character_creator.gd" id="1_creator"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pixel_editor.tscn" id="2_pixed"]
+
+[node name="CharacterCreator" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_creator")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.96, 0.96, 0.94, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 14
+text = "CREATE YOUR CHARACTER"
+horizontal_alignment = 1
+
+[node name="EditorRow" type="HBoxContainer" parent="CenterContainer/MainContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PixelEditor" parent="CenterContainer/MainContainer/EditorRow" instance=ExtResource("2_pixed")]
+layout_mode = 2
+
+[node name="SidePanel" type="VBoxContainer" parent="CenterContainer/MainContainer/EditorRow"]
+custom_minimum_size = Vector2(232, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PaletteLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 10
+text = "COLORS"
+
+[node name="PaletteGrid" type="GridContainer" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 4
+
+[node name="BrushLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 10
+text = "BRUSH: 1"
+
+[node name="BrushSlider" type="HSlider" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+layout_mode = 2
+min_value = 1.0
+max_value = 4.0
+step = 1.0
+value = 1.0
+tick_count = 4
+ticks_on_borders = true
+
+[node name="EraserButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+toggle_mode = true
+text = "ERASER"
+
+[node name="ClearButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "CLEAR"
+
+[node name="HistoryRow" type="HBoxContainer" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UndoButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel/HistoryRow"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "UNDO"
+
+[node name="RedoButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel/HistoryRow"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "REDO"
+
+[node name="SideSpacer" type="Control" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ConfirmButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "CONFIRM"
+
+[node name="BackButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "BACK TO MENU"
+
+[node name="FeedbackLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -310.0
+offset_top = -18.0
+offset_right = 310.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.7, 0.35, 0.2, 1)
+theme_override_font_sizes/font_size = 9
+text = ""
+horizontal_alignment = 1

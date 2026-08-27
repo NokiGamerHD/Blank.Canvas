@@ -1,0 +1,194 @@
+[gd_scene load_steps=8 format=3 uid="uid://dh2hexr5pogse"]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_menu"]
+[ext_resource type="Texture2D" uid="uid://cmga7ht20jwf4" path="res://assets/backgrounds/menu_blurred_scene.png" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/ui/animated_background.gd" id="3_animbg"]
+[ext_resource type="Shader" path="res://assets/shaders/hue_cycle.gdshader" id="4_shader"]
+[ext_resource type="Script" path="res://scripts/ui/floating_element.gd" id="5_float"]
+[ext_resource type="Script" path="res://scripts/ui/language_button.gd" id="6_language"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
+shader = ExtResource("4_shader")
+shader_parameter/hue_shift_speed = 0.05
+shader_parameter/hue_shift_amount = 0.15
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Background" type="Control" parent="."]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackgroundTexture" type="TextureRect" parent="Background"]
+texture_filter = 2
+material = SubResource("ShaderMaterial_bg")
+layout_mode = 0
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("3_animbg")
+
+[node name="Scrim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.96, 0.96, 0.94, 0.6)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/MenuContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 32
+text = "BLANK CANVAS"
+horizontal_alignment = 1
+script = ExtResource("5_float")
+amplitude_pixels = 5.0
+period_seconds = 3.2
+
+[node name="Spacer" type="Control" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(200, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "PLAY"
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 2.6
+phase_offset = 0.8
+
+[node name="QuitButton" type="Button" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(200, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "QUIT"
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 2.6
+phase_offset = 1.6
+
+[node name="LanguageButton" type="Button" parent="."]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -44.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 44.0
+grow_horizontal = 0
+tooltip_text = "Change language"
+script = ExtResource("6_language")
+
+[node name="LanguagePanel" type="PanelContainer" parent="."]
+visible = false
+z_index = 2
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -164.0
+offset_top = 50.0
+offset_right = -8.0
+offset_bottom = 142.0
+grow_horizontal = 0
+
+[node name="Content" type="VBoxContainer" parent="LanguagePanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="LanguagePanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 9
+text = "LANGUAGE"
+horizontal_alignment = 1
+
+[node name="EnglishButton" type="Button" parent="LanguagePanel/Content"]
+custom_minimum_size = Vector2(156, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "ENGLISH"
+
+[node name="PortugueseButton" type="Button" parent="LanguagePanel/Content"]
+custom_minimum_size = Vector2(156, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "PORTUGUÊS"
+
+[node name="FeedbackLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -20.0
+offset_right = 300.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.7, 0.35, 0.2, 1)
+theme_override_font_sizes/font_size = 10
+horizontal_alignment = 1
+
+[node name="VersionLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -22.0
+offset_right = 158.0
+offset_bottom = -6.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.8)
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 0
+
+[node name="CompanyLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -158.0
+offset_top = -22.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.8)
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 2
+text = "Imperial Bay™"

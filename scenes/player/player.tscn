@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/player/walk_animator.gd" id="2_walk"]
+[ext_resource type="Script" path="res://scripts/player/ability_controller.gd" id="3_abilities"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 26.0
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 5
+motion_mode = 1
+script = ExtResource("1_player")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+scale = Vector2(2, 2)
+script = ExtResource("2_walk")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 5.0
+
+[node name="AbilityController" type="Node" parent="."]
+script = ExtResource("3_abilities")

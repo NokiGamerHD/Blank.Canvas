@@ -1,0 +1,115 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/game_over.gd" id="1_gameover"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/menu_blurred_scene.png" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/ui/animated_background.gd" id="3_animbg"]
+[ext_resource type="Shader" path="res://assets/shaders/hue_cycle.gdshader" id="4_shader"]
+[ext_resource type="Script" path="res://scripts/ui/floating_element.gd" id="5_float"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
+shader = ExtResource("4_shader")
+shader_parameter/hue_shift_speed = 0.05
+shader_parameter/hue_shift_amount = 0.15
+
+[node name="GameOver" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gameover")
+
+[node name="Background" type="Control" parent="."]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackgroundTexture" type="TextureRect" parent="Background"]
+texture_filter = 2
+material = SubResource("ShaderMaterial_bg")
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("3_animbg")
+
+[node name="Scrim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.96, 0.96, 0.94, 0.6)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/MenuContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 28
+text = "GAME OVER"
+horizontal_alignment = 1
+script = ExtResource("5_float")
+amplitude_pixels = 5.0
+period_seconds = 3.2
+phase_offset = 0.0
+
+[node name="WaveLabel" type="Label" parent="CenterContainer/MenuContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 12
+text = "WAVE REACHED: 0"
+horizontal_alignment = 1
+script = ExtResource("5_float")
+amplitude_pixels = 3.5
+period_seconds = 2.9
+phase_offset = 0.5
+
+[node name="Spacer" type="Control" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+
+[node name="PlayAgainButton" type="Button" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(220, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "PLAY AGAIN"
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 2.6
+phase_offset = 1.1
+
+[node name="SaveScenarioButton" type="Button" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(220, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "SAVE CANVAS"
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 2.6
+phase_offset = 1.5
+
+[node name="MenuButton" type="Button" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(220, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "MENU"
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 2.6
+phase_offset = 1.9

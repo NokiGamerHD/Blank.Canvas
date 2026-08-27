@@ -1,0 +1,76 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/scenario_viewer.gd" id="1_viewer"]
+[ext_resource type="Script" path="res://scripts/ui/floating_element.gd" id="2_float"]
+
+[node name="ScenarioViewer" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_viewer")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.08, 0.075, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.92, 0.88, 1)
+theme_override_font_sizes/font_size = 16
+text = "FINAL CANVAS"
+horizontal_alignment = 1
+script = ExtResource("2_float")
+amplitude_pixels = 4.0
+period_seconds = 3.0
+phase_offset = 0.0
+
+[node name="FramePanel" type="PanelContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="CanvasDisplay" type="TextureRect" parent="CenterContainer/VBoxContainer/FramePanel"]
+texture_filter = 2
+custom_minimum_size = Vector2(380, 380)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PathLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.58, 1)
+theme_override_font_sizes/font_size = 7
+text = "SAVED TO: ..."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="InstructionLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.55, 0.52, 1)
+theme_override_font_sizes/font_size = 8
+text = "PRESS ESC TO GO BACK"
+horizontal_alignment = 1
+script = ExtResource("2_float")
+amplitude_pixels = 2.5
+period_seconds = 2.6
+phase_offset = 1.2

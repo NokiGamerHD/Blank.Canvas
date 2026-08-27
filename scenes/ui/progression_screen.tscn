@@ -1,0 +1,113 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/progression_screen.gd" id="1_prog"]
+
+[node name="ProgressionScreen" type="CanvasLayer"]
+process_mode = 2
+layer = 10
+script = ExtResource("1_prog")
+
+[node name="Dim" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.1, 0.1, 0.55)
+
+[node name="CenterContainer" type="CenterContainer" parent="Dim"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Dim/CenterContainer"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Dim/CenterContainer/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="Dim/CenterContainer/Panel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_font_sizes/font_size = 16
+text = "WAVE 5 COMPLETE!"
+horizontal_alignment = 1
+
+[node name="ChoicePage" type="VBoxContainer" parent="Dim/CenterContainer/Panel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SubtitleLabel" type="Label" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 9
+text = "CHOOSE YOUR PATH"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="UpgradeButton" type="Button" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+custom_minimum_size = Vector2(300, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "UPGRADE ABILITY"
+
+[node name="UpgradeInfoLabel" type="Label" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.5, 0.35, 1)
+theme_override_font_sizes/font_size = 8
+text = "CHOOSE 1 OF 3 RANDOM UPGRADES"
+horizontal_alignment = 1
+
+[node name="Spacer2" type="Control" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="NewAbilityButton" type="Button" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+custom_minimum_size = Vector2(300, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "CREATE NEW ABILITY"
+
+[node name="NewAbilityInfoLabel" type="Label" parent="Dim/CenterContainer/Panel/Content/ChoicePage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.4, 0.55, 1)
+theme_override_font_sizes/font_size = 8
+text = "DRAW A NEW PROJECTILE (MAX 100 PIXELS)"
+horizontal_alignment = 1
+
+[node name="UpgradePage" type="VBoxContainer" parent="Dim/CenterContainer/Panel/Content"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UpgradeSubtitle" type="Label" parent="Dim/CenterContainer/Panel/Content/UpgradePage"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 9
+text = "CHOOSE AN UPGRADE"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Dim/CenterContainer/Panel/Content/UpgradePage"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="UpgradeOptions" type="VBoxContainer" parent="Dim/CenterContainer/Panel/Content/UpgradePage"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Spacer2" type="Control" parent="Dim/CenterContainer/Panel/Content/UpgradePage"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="BackToChoiceButton" type="Button" parent="Dim/CenterContainer/Panel/Content/UpgradePage"]
+custom_minimum_size = Vector2(300, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "BACK"

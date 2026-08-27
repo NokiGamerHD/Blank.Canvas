@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ability_creator/ability_creator.tscn" id="1_creator"]
+
+[node name="InRunAbilityCreator" type="CanvasLayer"]
+process_mode = 2
+layer = 15
+visible = false
+
+[node name="AbilityCreator" parent="." instance=ExtResource("1_creator")]
+in_run_mode = true
