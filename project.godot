@@ -8,16 +8,12 @@
 
 config_version=5
 
-[animation]
-
-compatibility/default_parent_skeleton_in_mesh_instance_3d=true
-
 [application]
 
 config/name="Blank Canvas"
 config/description="A 2D top-down roguelike where you draw your character and abilities while the blank-canvas arena fills with paint."
 run/main_scene="res://scenes/menu/main_menu.tscn"
-config/features=PackedStringArray("4.7")
+config/features=PackedStringArray("4.3")
 config/icon="res://icon.svg"
 
 [autoload]
