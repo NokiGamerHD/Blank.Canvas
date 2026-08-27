@@ -4,7 +4,6 @@ const CLICK_SOUND: AudioStream = preload("res://assets/audio/click.wav")
 const HIT_SOUND: AudioStream = preload("res://assets/audio/hit.wav")
 const ENEMY_DEATH_SOUND: AudioStream = preload("res://assets/audio/enemy_death.wav")
 const PLAYER_HURT_SOUND: AudioStream = preload("res://assets/audio/player_hurt.wav")
-const WARM_UP_VOLUME_DB: float = -80.0
 
 @export_range(-40.0, 6.0) var master_volume_db: float = -6.0
 
@@ -12,7 +11,6 @@ const WARM_UP_VOLUME_DB: float = -80.0
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().node_added.connect(_on_node_added)
-	_warm_up_audio_driver()
 
 
 func _on_node_added(node: Node) -> void:
@@ -34,16 +32,6 @@ func play_enemy_death() -> void:
 
 func play_player_hurt() -> void:
 	_play(PLAYER_HURT_SOUND)
-
-
-func _warm_up_audio_driver() -> void:
-	var player: AudioStreamPlayer = AudioStreamPlayer.new()
-	player.stream = CLICK_SOUND
-	player.volume_db = WARM_UP_VOLUME_DB
-	player.process_mode = Node.PROCESS_MODE_ALWAYS
-	get_tree().root.add_child(player)
-	player.finished.connect(player.queue_free)
-	player.play()
 
 
 func _play(stream: AudioStream) -> void:
