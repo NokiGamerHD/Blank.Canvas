@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dh2hexr5pogse"]
+[gd_scene load_steps=9 format=3 uid="uid://dh2hexr5pogse"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_menu"]
 [ext_resource type="Texture2D" uid="uid://cmga7ht20jwf4" path="res://assets/backgrounds/menu_blurred_scene.png" id="2_bg"]
@@ -6,6 +6,7 @@
 [ext_resource type="Shader" path="res://assets/shaders/hue_cycle.gdshader" id="4_shader"]
 [ext_resource type="Script" path="res://scripts/ui/floating_element.gd" id="5_float"]
 [ext_resource type="Script" path="res://scripts/ui/language_button.gd" id="6_language"]
+[ext_resource type="Script" path="res://scripts/ui/audio_button.gd" id="7_audio"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("4_shader")
@@ -84,6 +85,16 @@ amplitude_pixels = 3.0
 period_seconds = 2.6
 phase_offset = 0.8
 
+[node name="QuickPlayButton" type="Button" parent="CenterContainer/MenuContainer"]
+custom_minimum_size = Vector2(200, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "QUICK PLAY"
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 2.6
+phase_offset = 1.2
+
 [node name="QuitButton" type="Button" parent="CenterContainer/MenuContainer"]
 custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
@@ -107,6 +118,64 @@ offset_bottom = 44.0
 grow_horizontal = 0
 tooltip_text = "Change language"
 script = ExtResource("6_language")
+
+[node name="AudioButton" type="Button" parent="."]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -88.0
+offset_top = 8.0
+offset_right = -52.0
+offset_bottom = 44.0
+grow_horizontal = 0
+tooltip_text = "Sound"
+script = ExtResource("7_audio")
+
+[node name="AudioPanel" type="PanelContainer" parent="."]
+visible = false
+z_index = 2
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -164.0
+offset_top = 50.0
+offset_right = -8.0
+offset_bottom = 142.0
+grow_horizontal = 0
+
+[node name="Content" type="VBoxContainer" parent="AudioPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="AudioPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 9
+text = "SOUND"
+horizontal_alignment = 1
+
+[node name="VolumeLabel" type="Label" parent="AudioPanel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 8
+text = "VOLUME: 50%"
+horizontal_alignment = 1
+
+[node name="VolumeSlider" type="HSlider" parent="AudioPanel/Content"]
+custom_minimum_size = Vector2(156, 12)
+layout_mode = 2
+max_value = 1.0
+step = 0.05
+value = 0.5
+
+[node name="MuteButton" type="Button" parent="AudioPanel/Content"]
+custom_minimum_size = Vector2(156, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "MUTE"
 
 [node name="LanguagePanel" type="PanelContainer" parent="."]
 visible = false
@@ -161,6 +230,15 @@ theme_override_colors/font_color = Color(0.7, 0.35, 0.2, 1)
 theme_override_font_sizes/font_size = 10
 horizontal_alignment = 1
 
+[node name="BestWaveLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 220.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.8)
+theme_override_font_sizes/font_size = 9
+
 [node name="VersionLabel" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 2
@@ -173,7 +251,6 @@ offset_bottom = -6.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.8)
 theme_override_font_sizes/font_size = 9
-horizontal_alignment = 0
 
 [node name="CompanyLabel" type="Label" parent="."]
 layout_mode = 1
@@ -190,5 +267,5 @@ grow_horizontal = 0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.8)
 theme_override_font_sizes/font_size = 9
-horizontal_alignment = 2
 text = "Imperial Bay™"
+horizontal_alignment = 2

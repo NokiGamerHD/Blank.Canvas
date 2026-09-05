@@ -46,6 +46,7 @@ theme_override_constants/separation = 12
 
 [node name="PixelEditor" parent="CenterContainer/MainContainer/EditorRow" instance=ExtResource("2_pixed")]
 layout_mode = 2
+size_flags_vertical = 4
 
 [node name="SidePanel" type="VBoxContainer" parent="CenterContainer/MainContainer/EditorRow"]
 custom_minimum_size = Vector2(232, 0)
@@ -118,7 +119,7 @@ size_flags_vertical = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
-text = "PIXELS: 0 / 100"
+text = "OUTLINE: 0 / 100"
 horizontal_alignment = 1
 
 [node name="ConfirmButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]

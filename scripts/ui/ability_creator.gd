@@ -52,7 +52,7 @@ func _on_drawing_changed() -> void:
 
 
 func _update_pixel_count() -> void:
-	var count: int = pixel_editor.painted_pixel_count()
+	var count: int = pixel_editor.outline_pixel_count()
 	pixel_count_label.text = LocalizationManager.text("creator.pixels", [count, max_ability_pixels])
 	var count_color: Color = COUNT_OVER_COLOR if count > max_ability_pixels else COUNT_OK_COLOR
 	pixel_count_label.add_theme_color_override("font_color", count_color)
@@ -63,7 +63,7 @@ func _on_confirm_button_pressed() -> void:
 		_show_feedback("creator.draw_ability_first")
 		return
 
-	var count: int = pixel_editor.painted_pixel_count()
+	var count: int = pixel_editor.outline_pixel_count()
 	if count > max_ability_pixels:
 		_show_feedback("creator.ability_too_large", [count, max_ability_pixels])
 		return

@@ -5,7 +5,6 @@ signal language_changed
 
 
 const DEFAULT_LANGUAGE: String = "en"
-const SETTINGS_PATH: String = "user://settings.cfg"
 const SETTINGS_SECTION: String = "language"
 const SETTINGS_KEY: String = "code"
 
@@ -16,8 +15,17 @@ const TRANSLATIONS: Dictionary = {
 		"language.english": "ENGLISH",
 		"language.portuguese": "PORTUGUÊS",
 		"menu.play": "PLAY",
+		"menu.quick_play": "QUICK PLAY",
+		"menu.quick_play_tooltip": "Your last drawing",
+		"menu.quick_play_error": "Could not load the last drawing. Use PLAY to draw a new one.",
+		"menu.best_wave": "BEST WAVE: %d",
 		"menu.quit": "QUIT",
 		"menu.character_creator_error": "Could not open Character Creator. Check the project files.",
+		"audio.tooltip": "Sound",
+		"audio.title": "SOUND",
+		"audio.volume": "VOLUME: %d%%",
+		"audio.mute": "MUTE",
+		"audio.unmute": "UNMUTE",
 		"creator.character_title": "CREATE YOUR CHARACTER",
 		"creator.ability_title": "DRAW YOUR ABILITY",
 		"creator.colors": "COLORS",
@@ -30,13 +38,13 @@ const TRANSLATIONS: Dictionary = {
 		"creator.back_menu": "BACK TO MENU",
 		"creator.back_character": "BACK TO CHARACTER",
 		"creator.cancel": "CANCEL",
-		"creator.pixels": "PIXELS: %d / %d",
+		"creator.pixels": "OUTLINE: %d / %d",
 		"creator.canvas_cleared": "Canvas cleared. Use UNDO to restore it.",
 		"creator.draw_character_first": "Draw something before confirming!",
 		"creator.character_loaded": "Previous drawing loaded. Edit it or confirm to continue.",
 		"creator.draw_new_ability": "Draw your new ability!",
 		"creator.draw_ability_first": "Draw your ability before confirming!",
-		"creator.ability_too_large": "Ability is too large: %d pixels (maximum: %d). Erase some pixels.",
+		"creator.ability_too_large": "Outline too large: %d / %d. Only the outline counts — filling it in is free.",
 		"creator.arena_error": "Could not open the Arena. Check that scenes/game/arena.tscn exists.",
 		"creator.ability_loaded": "Previous ability loaded. Edit it or confirm to continue.",
 		"hud.hp": "HP: %d / %d",
@@ -44,6 +52,7 @@ const TRANSLATIONS: Dictionary = {
 		"hud.enemies": "ENEMIES: %d",
 		"pause.title": "PAUSED",
 		"pause.resume": "RESUME",
+		"pause.restart": "RESTART",
 		"pause.menu": "MENU",
 		"progression.wave_complete": "WAVE %d COMPLETE!",
 		"progression.choose_path": "CHOOSE YOUR PATH",
@@ -62,7 +71,10 @@ const TRANSLATIONS: Dictionary = {
 		"upgrade.range": "RANGE +10%",
 		"ability.name": "ABILITY %d",
 		"game_over.wave_reached": "WAVE REACHED: %d",
-		"game_over.play_again": "PLAY AGAIN",
+		"game_over.best_wave": "BEST: %d",
+		"game_over.new_record": "NEW RECORD!",
+		"game_over.retry": "RETRY",
+		"game_over.new_drawing": "NEW DRAWING",
 		"game_over.save_scenario": "SAVE CANVAS",
 		"game_over.menu": "MENU",
 		"scenario.final_canvas": "FINAL CANVAS",
@@ -77,8 +89,17 @@ const TRANSLATIONS: Dictionary = {
 		"language.english": "INGLÊS",
 		"language.portuguese": "PORTUGUÊS",
 		"menu.play": "JOGAR",
+		"menu.quick_play": "JOGO RÁPIDO",
+		"menu.quick_play_tooltip": "Seu último desenho",
+		"menu.quick_play_error": "Não foi possível carregar o último desenho. Use JOGAR para desenhar outro.",
+		"menu.best_wave": "MELHOR WAVE: %d",
 		"menu.quit": "SAIR",
 		"menu.character_creator_error": "Não foi possível abrir o Criador de Personagem. Verifique os arquivos do projeto.",
+		"audio.tooltip": "Som",
+		"audio.title": "SOM",
+		"audio.volume": "VOLUME: %d%%",
+		"audio.mute": "MUDO",
+		"audio.unmute": "COM SOM",
 		"creator.character_title": "CRIE SEU PERSONAGEM",
 		"creator.ability_title": "DESENHE SUA HABILIDADE",
 		"creator.colors": "CORES",
@@ -91,13 +112,13 @@ const TRANSLATIONS: Dictionary = {
 		"creator.back_menu": "VOLTAR AO MENU",
 		"creator.back_character": "VOLTAR AO PERSONAGEM",
 		"creator.cancel": "CANCELAR",
-		"creator.pixels": "PIXELS: %d / %d",
+		"creator.pixels": "CONTORNO: %d / %d",
 		"creator.canvas_cleared": "Quadro limpo. Use DESFAZER para recuperar.",
 		"creator.draw_character_first": "Desenhe algo antes de confirmar!",
 		"creator.character_loaded": "Desenho anterior carregado. Edite ou confirme para continuar.",
 		"creator.draw_new_ability": "Desenhe sua nova habilidade!",
 		"creator.draw_ability_first": "Desenhe sua habilidade antes de confirmar!",
-		"creator.ability_too_large": "Habilidade grande demais: %d pixels (máximo: %d). Apague um pouco.",
+		"creator.ability_too_large": "Contorno grande demais: %d / %d. Só o contorno conta — preencher é de graça.",
 		"creator.arena_error": "Não foi possível abrir a arena. Verifique se scenes/game/arena.tscn existe no projeto.",
 		"creator.ability_loaded": "Habilidade anterior carregada. Edite ou confirme para continuar.",
 		"hud.hp": "HP: %d / %d",
@@ -105,6 +126,7 @@ const TRANSLATIONS: Dictionary = {
 		"hud.enemies": "INIMIGOS: %d",
 		"pause.title": "PAUSADO",
 		"pause.resume": "CONTINUAR",
+		"pause.restart": "REINICIAR",
 		"pause.menu": "MENU",
 		"progression.wave_complete": "WAVE %d CONCLUÍDA!",
 		"progression.choose_path": "ESCOLHA SEU CAMINHO",
@@ -123,7 +145,10 @@ const TRANSLATIONS: Dictionary = {
 		"upgrade.range": "ALCANCE +10%",
 		"ability.name": "HAB. %d",
 		"game_over.wave_reached": "WAVE ALCANÇADA: %d",
-		"game_over.play_again": "JOGAR NOVAMENTE",
+		"game_over.best_wave": "RECORDE: %d",
+		"game_over.new_record": "NOVO RECORDE!",
+		"game_over.retry": "TENTAR DE NOVO",
+		"game_over.new_drawing": "NOVO DESENHO",
 		"game_over.save_scenario": "SALVAR QUADRO",
 		"game_over.menu": "MENU",
 		"scenario.final_canvas": "QUADRO FINAL",
@@ -164,7 +189,7 @@ func is_language_selected(candidate_language_code: String) -> bool:
 
 func _load_saved_language() -> void:
 	var settings: ConfigFile = ConfigFile.new()
-	if settings.load(SETTINGS_PATH) != OK:
+	if settings.load(GameManager.SETTINGS_PATH) != OK:
 		return
 	var saved_language: String = settings.get_value(SETTINGS_SECTION, SETTINGS_KEY, DEFAULT_LANGUAGE)
 	if TRANSLATIONS.has(saved_language):
@@ -173,7 +198,8 @@ func _load_saved_language() -> void:
 
 func _save_language() -> void:
 	var settings: ConfigFile = ConfigFile.new()
+	settings.load(GameManager.SETTINGS_PATH)
 	settings.set_value(SETTINGS_SECTION, SETTINGS_KEY, language_code)
-	var save_error: int = settings.save(SETTINGS_PATH)
+	var save_error: int = settings.save(GameManager.SETTINGS_PATH)
 	if save_error != OK:
 		push_warning("[LocalizationManager] Não foi possível salvar o idioma selecionado (erro %d)." % save_error)

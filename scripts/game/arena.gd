@@ -75,6 +75,7 @@ func _setup_hud() -> void:
 	hud.update_hp(player.current_hp, player.max_hp)
 	wave_manager.wave_changed.connect(hud.update_wave)
 	hud.setup_abilities(ability_controller)
+	hud.setup_minimap(self)
 
 
 func _setup_progression() -> void:
@@ -127,6 +128,7 @@ func _next_free_ability_index() -> int:
 
 func _setup_pause() -> void:
 	pause_screen.menu_requested.connect(GameManager.go_to_main_menu)
+	pause_screen.restart_requested.connect(GameManager.restart_run)
 
 
 func _on_player_died_capture_canvas() -> void:

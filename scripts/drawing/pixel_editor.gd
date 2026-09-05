@@ -14,6 +14,10 @@ signal drawing_changed
 
 const MAX_UNDO_STEPS: int = 64
 
+const NEIGHBOR_OFFSETS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+]
+
 var current_color: Color = Color.BLACK
 var brush_size: int = 1
 var eraser_enabled: bool = false
@@ -216,6 +220,63 @@ func painted_pixel_count() -> int:
 			if _image.get_pixel(x, y).a > 0.0:
 				count += 1
 	return count
+
+
+func outline_pixel_count() -> int:
+	var outside: Array[bool] = _build_outside_mask()
+	var count: int = 0
+	for y in grid_size:
+		for x in grid_size:
+			if _image.get_pixel(x, y).a <= 0.0:
+				continue
+			if _touches_outside(Vector2i(x, y), outside):
+				count += 1
+	return count
+
+
+func _build_outside_mask() -> Array[bool]:
+	var outside: Array[bool] = []
+	outside.resize(grid_size * grid_size)
+	outside.fill(false)
+
+	var pending: Array[Vector2i] = []
+	for i in grid_size:
+		_mark_outside(Vector2i(i, 0), outside, pending)
+		_mark_outside(Vector2i(i, grid_size - 1), outside, pending)
+		_mark_outside(Vector2i(0, i), outside, pending)
+		_mark_outside(Vector2i(grid_size - 1, i), outside, pending)
+
+	while not pending.is_empty():
+		var cell: Vector2i = pending.pop_back()
+		for offset in NEIGHBOR_OFFSETS:
+			_mark_outside(cell + offset, outside, pending)
+	return outside
+
+
+func _mark_outside(cell: Vector2i, outside: Array[bool], pending: Array[Vector2i]) -> void:
+	if not _is_inside_grid(cell):
+		return
+	var index: int = cell.y * grid_size + cell.x
+	if outside[index]:
+		return
+	if _image.get_pixelv(cell).a > 0.0:
+		return
+	outside[index] = true
+	pending.append(cell)
+
+
+func _touches_outside(cell: Vector2i, outside: Array[bool]) -> bool:
+	for offset in NEIGHBOR_OFFSETS:
+		var neighbor: Vector2i = cell + offset
+		if not _is_inside_grid(neighbor):
+			return true
+		if outside[neighbor.y * grid_size + neighbor.x]:
+			return true
+	return false
+
+
+func _is_inside_grid(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.x < grid_size and cell.y >= 0 and cell.y < grid_size
 
 
 func has_any_pixels() -> bool:

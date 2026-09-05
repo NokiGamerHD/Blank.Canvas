@@ -1,9 +1,11 @@
 extends CanvasLayer
 
 signal resumed
+signal restart_requested
 signal menu_requested
 
 @onready var resume_button: Button = $Dim/CenterContainer/Panel/Content/ResumeButton
+@onready var restart_button: Button = $Dim/CenterContainer/Panel/Content/RestartButton
 @onready var menu_button: Button = $Dim/CenterContainer/Panel/Content/MenuButton
 @onready var title_label: Label = $Dim/CenterContainer/Panel/Content/TitleLabel
 
@@ -11,6 +13,7 @@ signal menu_requested
 func _ready() -> void:
 	visible = false
 	resume_button.pressed.connect(_on_resume_button_pressed)
+	restart_button.pressed.connect(_on_restart_button_pressed)
 	menu_button.pressed.connect(_on_menu_button_pressed)
 	LocalizationManager.language_changed.connect(_apply_translations)
 	_apply_translations()
@@ -19,6 +22,7 @@ func _ready() -> void:
 func _apply_translations() -> void:
 	title_label.text = LocalizationManager.text("pause.title")
 	resume_button.text = LocalizationManager.text("pause.resume")
+	restart_button.text = LocalizationManager.text("pause.restart")
 	menu_button.text = LocalizationManager.text("pause.menu")
 
 
@@ -42,6 +46,11 @@ func close() -> void:
 func _on_resume_button_pressed() -> void:
 	close()
 	resumed.emit()
+
+
+func _on_restart_button_pressed() -> void:
+	close()
+	restart_requested.emit()
 
 
 func _on_menu_button_pressed() -> void:

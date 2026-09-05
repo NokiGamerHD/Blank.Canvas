@@ -3,7 +3,7 @@ extends Node
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "1.0.2"
+const VERSION: String = "1.2.2"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -19,6 +19,11 @@ const CHARACTER_DRAWING_PATH: String = "user://drawings/character.png"
 const SAVED_SCENARIOS_DIR: String = "user://saved_scenarios"
 
 
+const SETTINGS_PATH: String = "user://settings.cfg"
+const PROGRESS_SECTION: String = "progress"
+const BEST_WAVE_KEY: String = "best_wave"
+
+
 var character_image: Image = null
 
 var ability_images: Array[Image] = []
@@ -28,6 +33,14 @@ var last_wave_reached: int = 0
 var last_canvas_snapshot: Image = null
 
 var last_saved_scenario_path: String = ""
+
+var best_wave: int = 0
+
+var last_run_was_record: bool = false
+
+
+func _ready() -> void:
+	_load_progress()
 
 
 func change_scene(scene_path: String) -> bool:
@@ -69,6 +82,56 @@ func reset_run_data() -> void:
 	ability_images.clear()
 	last_wave_reached = 0
 	last_canvas_snapshot = null
+	last_run_was_record = false
+
+
+func set_wave_reached(wave: int) -> void:
+	last_wave_reached = wave
+	if wave <= best_wave:
+		return
+	best_wave = wave
+	last_run_was_record = true
+	_save_progress()
+
+
+func _load_progress() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	if settings.load(SETTINGS_PATH) != OK:
+		return
+	best_wave = settings.get_value(PROGRESS_SECTION, BEST_WAVE_KEY, 0)
+
+
+func _save_progress() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	settings.load(SETTINGS_PATH)
+	settings.set_value(PROGRESS_SECTION, BEST_WAVE_KEY, best_wave)
+	var save_error: int = settings.save(SETTINGS_PATH)
+	if save_error != OK:
+		push_warning("[GameManager] Não foi possível salvar o recorde (erro %d)." % save_error)
+
+
+func has_saved_drawings() -> bool:
+	return FileAccess.file_exists(CHARACTER_DRAWING_PATH) \
+		and FileAccess.file_exists(_ability_drawing_path(0))
+
+
+func load_saved_drawings() -> bool:
+	reset_run_data()
+	if not load_character_drawing_from_disk():
+		return false
+	return load_ability_drawing_from_disk(0)
+
+
+func restart_run() -> bool:
+	if character_image == null or not has_ability_drawing(0):
+		push_warning("[GameManager] Sem desenhos em memória para reiniciar a run.")
+		return false
+	last_wave_reached = 0
+	last_canvas_snapshot = null
+	last_run_was_record = false
+	if ability_images.size() > 1:
+		ability_images.resize(1)
+	return go_to_arena()
 
 
 func set_character_drawing(image: Image) -> void:

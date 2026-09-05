@@ -75,7 +75,7 @@ func _spawn_interval_for_wave(wave: int) -> float:
 
 func _start_wave(wave: int) -> void:
 	current_wave = wave
-	GameManager.last_wave_reached = wave
+	GameManager.set_wave_reached(wave)
 	_to_spawn = enemies_in_wave(wave)
 	_alive = 0
 	wave_changed.emit(wave)

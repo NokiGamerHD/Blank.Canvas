@@ -55,18 +55,18 @@ assets/     sprites, fonts, shaders, backgrounds, audio
 
 ## License
 
-The code in this project is available under the MIT License — see
+The source code in this repository is released under the MIT License — see
 [LICENSE](LICENSE).
 
-This does **not** necessarily cover every included asset:
+The MIT License does **not** extend to every bundled asset:
 
-- The **Press Start 2P** font (`assets/fonts/`) has its own SIL Open Font
-  License — see `assets/fonts/press_start_2p_OFL.txt`.
-- The **enemy sprites** (`assets/sprites/enemies/`) were supplied during
-  development and their original license was not verified here. If you plan
-  to keep this repository public, confirm the original sprites' terms of
-  use and redistribution before publishing.
+- The **Press Start 2P** font (`assets/fonts/`) is distributed under the SIL
+  Open Font License — see `assets/fonts/press_start_2p_OFL.txt`.
+- The **enemy sprites** (`assets/sprites/enemies/`) are third-party assets.
+  No license to them is granted here, and their terms of use and
+  redistribution have not been verified. Anyone reusing or redistributing
+  this project is responsible for clearing those sprites independently.
 
-The remaining assets created during development (icon, cover art,
-background textures, and sound effects) were made specifically for this
-project and are covered by the MIT License above.
+All remaining assets — icon, cover art, background textures, and sound
+effects — are original to this project and are covered by the MIT License
+above.

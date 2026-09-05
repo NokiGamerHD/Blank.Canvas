@@ -35,6 +35,10 @@ func setup(world_size: Vector2) -> void:
 	_is_ready = true
 
 
+func get_texture() -> ImageTexture:
+	return _texture
+
+
 func get_image_copy() -> Image:
 	if _image == null:
 		return null
