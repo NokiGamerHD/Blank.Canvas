@@ -70,6 +70,10 @@ func is_moving() -> bool:
 	return velocity.length() > 5.0
 
 
+func is_dead() -> bool:
+	return _is_dead
+
+
 func take_damage(amount: float) -> void:
 	if _is_dead:
 		return

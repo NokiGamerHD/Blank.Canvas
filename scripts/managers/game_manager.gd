@@ -3,7 +3,7 @@ extends Node
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "1.2.2"
+const VERSION: String = "1.2.5"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -40,7 +40,21 @@ var last_run_was_record: bool = false
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_progress()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		toggle_fullscreen()
+
+
+func toggle_fullscreen() -> void:
+	var mode: int = DisplayServer.window_get_mode()
+	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func change_scene(scene_path: String) -> bool:
@@ -48,6 +62,7 @@ func change_scene(scene_path: String) -> bool:
 		push_warning("[GameManager] Cena ainda não implementada: %s" % scene_path)
 		return false
 	TransitionManager.play_transition(func() -> void:
+		get_tree().paused = false
 		get_tree().change_scene_to_file(scene_path)
 	)
 	return true

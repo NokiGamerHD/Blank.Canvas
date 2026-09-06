@@ -39,8 +39,14 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		pause_screen.open()
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	if pause_screen.visible or progression_screen.visible or in_run_creator_layer.visible:
+		return
+	if player.is_dead():
+		return
+	get_viewport().set_input_as_handled()
+	pause_screen.open()
 
 
 func _build_boundaries() -> void:
