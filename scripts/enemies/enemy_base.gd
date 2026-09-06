@@ -69,12 +69,14 @@ var speed: float = 140.0
 var contact_damage: float = 10.0
 var trail_color: Color = Color.RED
 var trail_radius: float = 5.0
+var collision_radius: float = 18.0
 
 var _damage_timer: float = 0.0
 var _is_dying: bool = false
 var _player: Player = null
 var _paint_canvas: PaintCanvas = null
 var _last_paint_position: Vector2 = Vector2.ZERO
+var _arena_bounds: Rect2 = Rect2()
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -94,13 +96,14 @@ func _apply_preset() -> void:
 	contact_damage = preset["contact_damage"]
 	trail_color = preset["trail_color"]
 	trail_radius = preset["trail_radius"]
+	collision_radius = preset["collision_radius"]
 
 	speed = preset["speed"] * randf_range(0.9, 1.1)
 
 	_apply_visual(preset)
 
 	var shape: CircleShape2D = CircleShape2D.new()
-	shape.radius = preset["collision_radius"]
+	shape.radius = collision_radius
 	collision_shape.shape = shape
 
 
@@ -162,15 +165,31 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		velocity = velocity.move_toward(Vector2.ZERO, chase_acceleration * delta)
 		move_and_slide()
+		_keep_inside_arena()
 		return
 
 	var direction: Vector2 = (player.global_position - global_position).normalized()
 	velocity = velocity.move_toward(direction * speed, chase_acceleration * delta)
 	move_and_slide()
+	_keep_inside_arena()
 
 	_update_facing()
 	_check_contact_damage()
 	_paint_trail()
+
+
+func set_arena_bounds(bounds: Rect2) -> void:
+	_arena_bounds = bounds
+
+
+func _keep_inside_arena() -> void:
+	if _arena_bounds.size.x <= 0.0 or _arena_bounds.size.y <= 0.0:
+		return
+	var inset: Vector2 = Vector2(collision_radius, collision_radius)
+	global_position = global_position.clamp(
+		_arena_bounds.position + inset,
+		_arena_bounds.end - inset
+	)
 
 
 func _get_player() -> Player:

@@ -67,6 +67,7 @@ func _on_save_scenario_button_pressed() -> void:
 		push_warning("[GameOver] Cena do visualizador de cenário não encontrada.")
 		return
 	TransitionManager.play_flash_transition(func() -> void:
+		get_tree().paused = false
 		get_tree().change_scene_to_file(GameManager.SCENE_SCENARIO_VIEWER)
 	)
 

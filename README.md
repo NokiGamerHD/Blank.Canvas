@@ -51,6 +51,7 @@ to desktop and Web.
 scenes/     Godot scenes (menu, editors, arena, UI)
 scripts/    source code (GDScript)
 assets/     sprites, fonts, shaders, backgrounds, audio
+press-kit/  store page material (screenshots, cover art, icon)
 ```
 
 ## License

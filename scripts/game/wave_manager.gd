@@ -30,6 +30,8 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 
 @export var arena_margin: float = 64.0
 
+@export var spawn_attempts: int = 16
+
 @export var common_weight_base: float = 0.50
 @export var common_weight_per_wave: float = -0.015
 @export var fast_weight_base: float = 0.30
@@ -90,7 +92,8 @@ func _on_spawn_timer_timeout() -> void:
 	var player: Player = get_tree().get_first_node_in_group("player") as Player
 	if player == null:
 		return
-	_spawn_enemy(_pick_enemy_type(), _pick_spawn_position(player.global_position))
+	var type: EnemyBase.EnemyType = _pick_enemy_type()
+	_spawn_enemy(type, _pick_spawn_position(player.global_position, _spawn_clearance(type)))
 	_to_spawn -= 1
 	if _to_spawn <= 0:
 		_spawn_timer.stop()
@@ -147,20 +150,53 @@ func _pick_enemy_type() -> EnemyBase.EnemyType:
 	return EnemyBase.EnemyType.TANK
 
 
-func _pick_spawn_position(player_position: Vector2) -> Vector2:
-	var angle: float = randf() * TAU
-	var distance: float = randf_range(min_spawn_distance, max_spawn_distance)
-	var candidate: Vector2 = player_position + Vector2.from_angle(angle) * distance
+func _spawn_clearance(type: EnemyBase.EnemyType) -> float:
+	return maxf(arena_margin, EnemyBase.PRESETS[type]["collision_radius"])
 
-	var minimum: Vector2 = Vector2(arena_margin, arena_margin)
-	var maximum: Vector2 = _arena.arena_size - Vector2(arena_margin, arena_margin)
-	return candidate.clamp(minimum, maximum)
+
+func _pick_spawn_position(player_position: Vector2, clearance: float) -> Vector2:
+	var minimum: Vector2 = Vector2(clearance, clearance)
+	var maximum: Vector2 = _arena.arena_size - minimum
+	if minimum.x >= maximum.x or minimum.y >= maximum.y:
+		push_warning("[WaveManager] Arena menor que a margem de spawn; usando o centro.")
+		return _arena.arena_size / 2.0
+
+	var start_angle: float = randf() * TAU
+	for attempt in spawn_attempts:
+		var angle: float = start_angle + TAU * float(attempt) / float(spawn_attempts)
+		var distance: float = randf_range(min_spawn_distance, max_spawn_distance)
+		var candidate: Vector2 = player_position + Vector2.from_angle(angle) * distance
+		if _is_inside(candidate, minimum, maximum):
+			return candidate
+
+	return _farthest_position_inside(player_position, minimum, maximum)
+
+
+func _is_inside(point: Vector2, minimum: Vector2, maximum: Vector2) -> bool:
+	return point.x >= minimum.x and point.x <= maximum.x \
+		and point.y >= minimum.y and point.y <= maximum.y
+
+
+func _farthest_position_inside(player_position: Vector2, minimum: Vector2, maximum: Vector2) -> Vector2:
+	var best: Vector2 = player_position.clamp(minimum, maximum)
+	var best_distance: float = -1.0
+	for attempt in spawn_attempts:
+		var candidate: Vector2 = Vector2(
+			randf_range(minimum.x, maximum.x),
+			randf_range(minimum.y, maximum.y)
+		)
+		var distance: float = candidate.distance_squared_to(player_position)
+		if distance > best_distance:
+			best_distance = distance
+			best = candidate
+	return best
 
 
 func _spawn_enemy(type: EnemyBase.EnemyType, spawn_position: Vector2) -> void:
 	var enemy: EnemyBase = ENEMY_SCENE.instantiate()
 	enemy.enemy_type = type
 	enemy.position = spawn_position
+	enemy.set_arena_bounds(Rect2(Vector2.ZERO, _arena.arena_size))
 	enemy.died.connect(_on_enemy_died)
 	_enemies_container.add_child(enemy)
 	enemy.apply_wave_scaling(1.0 + hp_scale_per_wave * (current_wave - 1))
