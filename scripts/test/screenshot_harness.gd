@@ -10,6 +10,9 @@ const SETTLE_FRAMES: int = 12
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	var language: String = OS.get_environment("SHOT_LANG")
+	if not language.is_empty():
+		LocalizationManager.set_language(language)
 	var dir_error: int = DirAccess.make_dir_recursive_absolute(OUTPUT_DIR)
 	if dir_error != OK and not DirAccess.dir_exists_absolute(OUTPUT_DIR):
 		push_warning("[ScreenshotHarness] Não foi possível criar %s (erro %d)." % [OUTPUT_DIR, dir_error])
