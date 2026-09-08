@@ -75,7 +75,7 @@ size_flags_vertical = 4
 [node name="SidePanel" type="VBoxContainer" parent="CenterContainer/MainContainer/EditorRow"]
 custom_minimum_size = Vector2(232, 0)
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="ToolLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
 custom_minimum_size = Vector2(0, 28)
@@ -112,9 +112,14 @@ theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
 text = "COLORS"
 
+[node name="CustomColorButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel/PaletteHeader"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+size_flags_vertical = 4
+
 [node name="CurrentColorSwatch" type="TextureRect" parent="CenterContainer/MainContainer/EditorRow/SidePanel/PaletteHeader"]
 texture_filter = 1
-custom_minimum_size = Vector2(22, 22)
+custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
 size_flags_vertical = 4
 expand_mode = 1
@@ -122,18 +127,27 @@ stretch_mode = 5
 
 [node name="PaletteGrid" type="GridContainer" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
 layout_mode = 2
+size_flags_horizontal = 4
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
-columns = 8
+columns = 10
 
-[node name="BrushLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+[node name="BrushRow" type="HBoxContainer" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
 layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BrushLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel/BrushRow"]
+layout_mode = 2
+size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
 text = "BRUSH: 1"
 
-[node name="BrushSlider" type="HSlider" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
+[node name="BrushSlider" type="HSlider" parent="CenterContainer/MainContainer/EditorRow/SidePanel/BrushRow"]
+custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 min_value = 1.0
 max_value = 4.0
 step = 1.0

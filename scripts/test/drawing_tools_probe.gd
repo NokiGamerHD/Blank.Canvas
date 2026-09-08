@@ -29,6 +29,8 @@ func _ready() -> void:
 	_check_picker()
 	_check_spray()
 	_check_history()
+	_check_palette_size()
+	_check_color_dialog()
 	_check_share_code()
 	_check_share_code_rejects_garbage()
 	_check_code_field()
@@ -182,6 +184,45 @@ func _check_history() -> void:
 	_editor.redo()
 	var after_redo: int = _painted()
 	_report("desfazer/refazer", painted == 4 and after_undo == 0 and after_redo == 4, "pintado=%d desfeito=%d refeito=%d" % [painted, after_undo, after_redo])
+
+
+func _check_palette_size() -> void:
+	var expected: int = DrawingCreatorBase.PALETTE_COLORS.size() + DrawingCreatorBase.CUSTOM_COLOR_SLOTS
+	var swatches: int = _creator.palette_grid.get_child_count()
+	var unique: Dictionary = {}
+	for color in DrawingCreatorBase.PALETTE_COLORS:
+		unique[color.to_html(false)] = true
+	var repeated: bool = unique.size() != DrawingCreatorBase.PALETTE_COLORS.size()
+	_report("paleta", swatches == expected and not repeated, "botoes=%d esperado=%d cores_repetidas=%s" % [swatches, expected, repeated])
+
+
+func _check_color_dialog() -> void:
+	var saved_colors: PackedColorArray = GameManager.custom_colors.duplicate()
+	GameManager.custom_colors = PackedColorArray()
+	_creator._refresh_custom_slots()
+
+	var opened: bool = _creator.open_color_dialog()
+	var dialog: ColorDialog = _creator._color_dialog
+	if not opened or dialog == null:
+		_report("seletor de cor", false, "o seletor não abriu")
+		return
+
+	dialog.hex_field.text = "#1a9be0"
+	dialog._on_use_button_pressed()
+	var applied: bool = _editor.current_color.is_equal_approx(Color("1a9be0"))
+	var stored: bool = GameManager.custom_colors.size() == 1 and GameManager.custom_colors[0].is_equal_approx(Color("1a9be0"))
+	var slot: Button = _creator._custom_slot_button(0)
+	var selected: bool = slot.button_pressed and not slot.disabled
+	_report("seletor de cor", applied and stored and selected and not dialog.visible, "cor=%s salva=%s selecionada=%s aberto=%s" % [_editor.current_color.to_html(false), stored, selected, dialog.visible])
+
+	_creator.open_color_dialog()
+	dialog.hex_field.text = "isso nao e cor"
+	dialog._on_use_button_pressed()
+	_report("seletor rejeita hex invalido", _editor.current_color.is_equal_approx(Color("1a9be0")), "cor=%s esperado=1a9be0" % _editor.current_color.to_html(false))
+
+	GameManager.custom_colors = saved_colors
+	GameManager._save_custom_colors()
+	_creator._refresh_custom_slots()
 
 
 func _check_share_code() -> void:

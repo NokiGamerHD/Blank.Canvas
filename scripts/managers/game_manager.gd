@@ -3,7 +3,7 @@ extends Node
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "1.3.0"
+const VERSION: String = "1.4.1"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -22,6 +22,9 @@ const SAVED_SCENARIOS_DIR: String = "user://saved_scenarios"
 const SETTINGS_PATH: String = "user://settings.cfg"
 const PROGRESS_SECTION: String = "progress"
 const BEST_WAVE_KEY: String = "best_wave"
+const PALETTE_SECTION: String = "palette"
+const CUSTOM_COLORS_KEY: String = "custom_colors"
+const MAX_CUSTOM_COLORS: int = 10
 
 
 var character_image: Image = null
@@ -38,10 +41,13 @@ var best_wave: int = 0
 
 var last_run_was_record: bool = false
 
+var custom_colors: PackedColorArray = PackedColorArray()
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_progress()
+	_load_custom_colors()
 
 
 func _input(event: InputEvent) -> void:
@@ -123,6 +129,39 @@ func _save_progress() -> void:
 	var save_error: int = settings.save(SETTINGS_PATH)
 	if save_error != OK:
 		push_warning("[GameManager] Não foi possível salvar o recorde (erro %d)." % save_error)
+
+
+func add_custom_color(color: Color) -> int:
+	for index in custom_colors.size():
+		if custom_colors[index].is_equal_approx(color):
+			return index
+	if custom_colors.size() >= MAX_CUSTOM_COLORS:
+		custom_colors.remove_at(0)
+	custom_colors.append(color)
+	_save_custom_colors()
+	return custom_colors.size() - 1
+
+
+func _load_custom_colors() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	if settings.load(SETTINGS_PATH) != OK:
+		return
+	var stored: Variant = settings.get_value(PALETTE_SECTION, CUSTOM_COLORS_KEY, PackedColorArray())
+	if not stored is PackedColorArray:
+		push_warning("[GameManager] Cores personalizadas salvas em formato inesperado, ignorando.")
+		return
+	custom_colors = stored
+	if custom_colors.size() > MAX_CUSTOM_COLORS:
+		custom_colors = custom_colors.slice(custom_colors.size() - MAX_CUSTOM_COLORS)
+
+
+func _save_custom_colors() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	settings.load(SETTINGS_PATH)
+	settings.set_value(PALETTE_SECTION, CUSTOM_COLORS_KEY, custom_colors)
+	var save_error: int = settings.save(SETTINGS_PATH)
+	if save_error != OK:
+		push_warning("[GameManager] Não foi possível salvar as cores personalizadas (erro %d)." % save_error)
 
 
 func has_saved_drawings() -> bool:
