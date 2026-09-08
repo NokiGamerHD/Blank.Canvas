@@ -98,6 +98,8 @@ func _capture_creators() -> void:
 	var character: Node = _show_scene(GameManager.SCENE_CHARACTER_CREATOR)
 	if character != null:
 		await _capture("08_criador_personagem")
+		if character.open_color_dialog():
+			await _capture("11_seletor_de_cor")
 		await _clear_scene(character)
 
 	var ability: Node = _show_scene(GameManager.SCENE_ABILITY_CREATOR)
@@ -121,6 +123,15 @@ func _capture_arena() -> void:
 	arena.get_node("ProgressionScreen").open(5, controller.get_abilities())
 	await _capture("10_arena_progressao")
 	arena.get_node("ProgressionScreen").close()
+
+	var in_run_layer: CanvasLayer = arena.get_node("InRunAbilityCreator")
+	var in_run_creator: DrawingCreatorBase = in_run_layer.get_node("AbilityCreator")
+	in_run_layer.visible = true
+	get_tree().paused = true
+	if in_run_creator.open_color_dialog():
+		await _capture("12_seletor_de_cor_em_partida")
+	get_tree().paused = false
+	in_run_layer.visible = false
 
 	await _clear_scene(arena)
 
