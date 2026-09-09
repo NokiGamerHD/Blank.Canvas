@@ -3,7 +3,7 @@ extends Node
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "1.4.1"
+const VERSION: String = "1.5.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"

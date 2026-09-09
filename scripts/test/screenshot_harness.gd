@@ -2,6 +2,8 @@ extends Node
 
 const OUTPUT_DIR: String = "user://screenshots"
 const SETTLE_FRAMES: int = 12
+const INDICATOR_DEMO_SCENE: String = "res://scenes/enemies/enemy_base.tscn"
+const INDICATOR_DEMO_DISTANCE: float = 520.0
 
 @export var arena_seconds: float = 8.0
 
@@ -124,6 +126,9 @@ func _capture_arena() -> void:
 	await _capture("10_arena_progressao")
 	arena.get_node("ProgressionScreen").close()
 
+	if _spawn_indicator_demo(arena):
+		await _capture("13_indicadores_de_inimigo")
+
 	var in_run_layer: CanvasLayer = arena.get_node("InRunAbilityCreator")
 	var in_run_creator: DrawingCreatorBase = in_run_layer.get_node("AbilityCreator")
 	in_run_layer.visible = true
@@ -134,6 +139,29 @@ func _capture_arena() -> void:
 	in_run_layer.visible = false
 
 	await _clear_scene(arena)
+
+
+func _spawn_indicator_demo(arena: Arena) -> bool:
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	if scene == null:
+		push_warning("[ScreenshotHarness] Não foi possível carregar %s." % INDICATOR_DEMO_SCENE)
+		return false
+
+	var types: Array[EnemyBase.EnemyType] = [
+		EnemyBase.EnemyType.COMMON,
+		EnemyBase.EnemyType.FAST,
+		EnemyBase.EnemyType.TANK,
+	]
+	for index in types.size():
+		var enemy: EnemyBase = scene.instantiate()
+		enemy.enemy_type = types[index]
+		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		arena.enemies_container.add_child(enemy)
+		var angle: float = TAU * float(index) / float(types.size()) - PI / 3.0
+		enemy.global_position = arena.player.global_position \
+			+ Vector2.from_angle(angle) * INDICATOR_DEMO_DISTANCE
+		enemy.set_physics_process(false)
+	return true
 
 
 func _capture_game_over() -> void:

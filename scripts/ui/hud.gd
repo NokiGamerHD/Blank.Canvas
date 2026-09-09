@@ -7,6 +7,7 @@ const AbilitySlotScene: PackedScene = preload("res://scenes/ui/ability_slot.tscn
 @onready var enemies_label: Label = $InfoPanel/InfoContainer/EnemiesLabel
 @onready var abilities_row: HBoxContainer = $AbilitiesPanel/AbilitiesRow
 @onready var minimap: Minimap = $MinimapPanel/Minimap
+@onready var enemy_indicators: EnemyIndicators = $EnemyIndicators
 
 var _count_timer: Timer = null
 var _ability_controller: AbilityController = null
@@ -62,6 +63,10 @@ func setup_abilities(controller: AbilityController) -> void:
 
 func setup_minimap(arena: Arena) -> void:
 	minimap.setup(arena)
+
+
+func setup_enemy_indicators(arena: Arena) -> void:
+	enemy_indicators.setup(arena)
 
 
 func _rebuild_ability_slots(abilities: Array[AbilityData]) -> void:

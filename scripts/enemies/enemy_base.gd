@@ -33,9 +33,9 @@ const PRESETS: Dictionary = {
 		"shape": "circle", "texture_half_size": 8, "color": Color("4fa3d9"),
 	},
 	EnemyType.TANK: {
-		"max_hp": 90.0,
+		"max_hp": 60.0,
 		"speed": 90.0,
-		"contact_damage": 15.0,
+		"contact_damage": 25.0,
 		"collision_radius": 32.0,
 		"trail_color": Color("15b10f", 0.85),
 		"trail_radius": 18.0,
