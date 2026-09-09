@@ -82,6 +82,7 @@ func _setup_hud() -> void:
 	wave_manager.wave_changed.connect(hud.update_wave)
 	hud.setup_abilities(ability_controller)
 	hud.setup_minimap(self)
+	hud.setup_enemy_indicators(self)
 
 
 func _setup_progression() -> void:

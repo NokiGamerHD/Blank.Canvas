@@ -9,21 +9,21 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 
 @export var base_enemies_per_wave: int = 4
 
-@export var enemies_increment_per_wave: int = 3
+@export var enemies_increment_per_wave: int = 2
 
 @export var waves_per_progression: int = 5
 
-@export var hp_scale_per_wave: float = 0.10
+@export var hp_scale_per_wave: float = 0.08
 
 @export var first_wave_delay: float = 2.0
 
-@export var time_between_waves: float = 3.0
+@export var time_between_waves: float = 2.0
 
-@export var base_spawn_interval: float = 0.6
+@export var base_spawn_interval: float = 0.45
 
 @export var spawn_interval_decrease_per_wave: float = 0.02
 
-@export var min_spawn_interval: float = 0.15
+@export var min_spawn_interval: float = 0.12
 
 @export var min_spawn_distance: float = 450.0
 @export var max_spawn_distance: float = 600.0
@@ -33,11 +33,12 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 @export var spawn_attempts: int = 16
 
 @export var common_weight_base: float = 0.50
-@export var common_weight_per_wave: float = -0.015
+@export var common_weight_per_wave: float = -0.008
 @export var fast_weight_base: float = 0.30
 @export var fast_weight_per_wave: float = 0.006
-@export var tank_weight_base: float = 0.20
-@export var tank_weight_per_wave: float = 0.009
+@export var tank_weight_base: float = 0.05
+@export var tank_weight_per_wave: float = 0.002
+@export var tank_weight_max: float = 0.12
 @export var tank_unlock_wave: int = 6
 
 @export var min_type_weight: float = 0.05
@@ -139,7 +140,7 @@ func _pick_enemy_type() -> EnemyBase.EnemyType:
 			return EnemyBase.EnemyType.COMMON
 		return EnemyBase.EnemyType.FAST
 
-	var tank_weight: float = maxf(tank_weight_base + tank_weight_per_wave * elapsed, min_type_weight)
+	var tank_weight: float = clampf(tank_weight_base + tank_weight_per_wave * elapsed, min_type_weight, tank_weight_max)
 	var total_weight: float = common_weight + fast_weight + tank_weight
 	var roll: float = randf() * total_weight
 
