@@ -36,6 +36,9 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 @export var common_weight_per_wave: float = -0.008
 @export var fast_weight_base: float = 0.30
 @export var fast_weight_per_wave: float = 0.006
+@export var stalker_weight_base: float = 0.14
+@export var stalker_weight_per_wave: float = 0.003
+@export var stalker_weight_max: float = 0.24
 @export var tank_weight_base: float = 0.05
 @export var tank_weight_per_wave: float = 0.002
 @export var tank_weight_max: float = 0.12
@@ -129,26 +132,35 @@ func _start_next_wave_delayed() -> void:
 
 
 func _pick_enemy_type() -> EnemyBase.EnemyType:
+	var weights: Dictionary = _type_weights()
+	var total: float = 0.0
+	for weight in weights.values():
+		total += weight
+
+	var roll: float = randf() * total
+	for type in weights:
+		roll -= weights[type]
+		if roll <= 0.0:
+			return type
+	return EnemyBase.EnemyType.COMMON
+
+
+func _type_weights() -> Dictionary:
 	var elapsed: int = current_wave - 1
-	var common_weight: float = maxf(common_weight_base + common_weight_per_wave * elapsed, min_type_weight)
-	var fast_weight: float = maxf(fast_weight_base + fast_weight_per_wave * elapsed, min_type_weight)
-
-	if current_wave < tank_unlock_wave:
-		var early_total: float = common_weight + fast_weight
-		var early_roll: float = randf() * early_total
-		if early_roll < common_weight:
-			return EnemyBase.EnemyType.COMMON
-		return EnemyBase.EnemyType.FAST
-
-	var tank_weight: float = clampf(tank_weight_base + tank_weight_per_wave * elapsed, min_type_weight, tank_weight_max)
-	var total_weight: float = common_weight + fast_weight + tank_weight
-	var roll: float = randf() * total_weight
-
-	if roll < common_weight:
-		return EnemyBase.EnemyType.COMMON
-	elif roll < common_weight + fast_weight:
-		return EnemyBase.EnemyType.FAST
-	return EnemyBase.EnemyType.TANK
+	var weights: Dictionary = {
+		EnemyBase.EnemyType.COMMON:
+			maxf(common_weight_base + common_weight_per_wave * elapsed, min_type_weight),
+		EnemyBase.EnemyType.FAST:
+			maxf(fast_weight_base + fast_weight_per_wave * elapsed, min_type_weight),
+		EnemyBase.EnemyType.STALKER:
+			clampf(stalker_weight_base + stalker_weight_per_wave * elapsed,
+				min_type_weight, stalker_weight_max),
+	}
+	if current_wave >= tank_unlock_wave:
+		weights[EnemyBase.EnemyType.TANK] = clampf(
+			tank_weight_base + tank_weight_per_wave * elapsed, min_type_weight, tank_weight_max
+		)
+	return weights
 
 
 func _spawn_clearance(type: EnemyBase.EnemyType) -> float:

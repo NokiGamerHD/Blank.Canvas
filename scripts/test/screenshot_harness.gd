@@ -4,6 +4,10 @@ const OUTPUT_DIR: String = "user://screenshots"
 const SETTLE_FRAMES: int = 12
 const INDICATOR_DEMO_SCENE: String = "res://scenes/enemies/enemy_base.tscn"
 const INDICATOR_DEMO_DISTANCE: float = 520.0
+const DASH_DEMO_DISTANCE: float = 250.0
+const DASH_DEMO_DELAY: float = 0.34
+const ZIGZAG_DEMO_DISTANCE: float = 560.0
+const ZIGZAG_DEMO_SECONDS: float = 3.2
 
 @export var arena_seconds: float = 8.0
 
@@ -129,6 +133,14 @@ func _capture_arena() -> void:
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
 
+	if _spawn_zigzag_demo(arena):
+		await get_tree().create_timer(ZIGZAG_DEMO_SECONDS).timeout
+		await _capture("15_zigue_zague_do_vermelho")
+
+	if _spawn_dash_demo(arena):
+		await get_tree().create_timer(DASH_DEMO_DELAY).timeout
+		await _capture("14_dash_do_amarelo")
+
 	var in_run_layer: CanvasLayer = arena.get_node("InRunAbilityCreator")
 	var in_run_creator: DrawingCreatorBase = in_run_layer.get_node("AbilityCreator")
 	in_run_layer.visible = true
@@ -151,16 +163,55 @@ func _spawn_indicator_demo(arena: Arena) -> bool:
 		EnemyBase.EnemyType.COMMON,
 		EnemyBase.EnemyType.FAST,
 		EnemyBase.EnemyType.TANK,
+		EnemyBase.EnemyType.STALKER,
 	]
 	for index in types.size():
 		var enemy: EnemyBase = scene.instantiate()
 		enemy.enemy_type = types[index]
 		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
-		arena.enemies_container.add_child(enemy)
 		var angle: float = TAU * float(index) / float(types.size()) - PI / 3.0
-		enemy.global_position = arena.player.global_position \
+		enemy.position = arena.player.global_position \
 			+ Vector2.from_angle(angle) * INDICATOR_DEMO_DISTANCE
+		arena.enemies_container.add_child(enemy)
 		enemy.set_physics_process(false)
+	return true
+
+
+func _spawn_zigzag_demo(arena: Arena) -> bool:
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	if scene == null:
+		return false
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+
+	for index in 3:
+		var enemy: EnemyBase = scene.instantiate()
+		enemy.enemy_type = EnemyBase.EnemyType.COMMON
+		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		var angle: float = TAU * float(index) / 3.0
+		enemy.position = arena.player.global_position \
+			+ Vector2.from_angle(angle) * ZIGZAG_DEMO_DISTANCE
+		arena.enemies_container.add_child(enemy)
+		enemy.dash_range = 0.0
+	return true
+
+
+func _spawn_dash_demo(arena: Arena) -> bool:
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	if scene == null:
+		return false
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+
+	for index in 3:
+		var enemy: EnemyBase = scene.instantiate()
+		enemy.enemy_type = EnemyBase.EnemyType.STALKER
+		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		var angle: float = TAU * float(index) / 3.0 + PI / 6.0
+		enemy.position = arena.player.global_position \
+			+ Vector2.from_angle(angle) * DASH_DEMO_DISTANCE
+		arena.enemies_container.add_child(enemy)
+		enemy.dash_patience = 0.0
 	return true
 
 
