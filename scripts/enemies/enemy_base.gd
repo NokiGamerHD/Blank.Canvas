@@ -334,6 +334,7 @@ func _process_windup(delta: float) -> void:
 	_dash_timer = dash_duration
 	_ghost_countdown = 0.0
 	modulate.a = DASH_ALPHA
+	AudioManager.play_enemy_dash()
 
 
 func _process_dash(delta: float) -> void:

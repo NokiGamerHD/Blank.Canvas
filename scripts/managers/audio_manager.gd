@@ -6,6 +6,10 @@ const CLICK_SOUND: AudioStream = preload("res://assets/audio/click.wav")
 const HIT_SOUND: AudioStream = preload("res://assets/audio/hit.wav")
 const ENEMY_DEATH_SOUND: AudioStream = preload("res://assets/audio/enemy_death.wav")
 const PLAYER_HURT_SOUND: AudioStream = preload("res://assets/audio/player_hurt.wav")
+const SHOOT_SOUND: AudioStream = preload("res://assets/audio/shoot.wav")
+const ENEMY_DASH_SOUND: AudioStream = preload("res://assets/audio/enemy_dash.wav")
+const SHOOT_MIN_GAP: float = 0.05
+const ENEMY_DASH_MIN_GAP: float = 0.09
 const WARM_UP_VOLUME_DB: float = -80.0
 
 const POOL_SIZE: int = 12
@@ -19,6 +23,7 @@ const MUTED_KEY: String = "muted"
 var muted: bool = false
 
 var _players: Array[AudioStreamPlayer] = []
+var _last_played: Dictionary = {}
 var _driver_warmed: bool = false
 
 
@@ -78,6 +83,14 @@ func play_enemy_death() -> void:
 
 func play_player_hurt() -> void:
 	_play(PLAYER_HURT_SOUND)
+
+
+func play_shoot() -> void:
+	_play_spaced(SHOOT_SOUND, SHOOT_MIN_GAP)
+
+
+func play_enemy_dash() -> void:
+	_play_spaced(ENEMY_DASH_SOUND, ENEMY_DASH_MIN_GAP)
 
 
 func is_audible() -> bool:
@@ -143,6 +156,14 @@ func _free_player() -> AudioStreamPlayer:
 		if not player.playing:
 			return player
 	return _players[0]
+
+
+func _play_spaced(stream: AudioStream, min_gap: float) -> void:
+	var now: float = float(Time.get_ticks_msec()) / 1000.0
+	if now - float(_last_played.get(stream, -1000.0)) < min_gap:
+		return
+	_last_played[stream] = now
+	_play(stream)
 
 
 func _play(stream: AudioStream) -> void:

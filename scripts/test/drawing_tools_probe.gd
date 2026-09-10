@@ -29,6 +29,8 @@ func _ready() -> void:
 	_check_picker()
 	_check_spray()
 	_check_history()
+	_check_picker_returns_tool()
+	_check_alt_pick()
 	_check_palette_size()
 	_check_color_dialog()
 	_check_share_code()
@@ -184,6 +186,40 @@ func _check_history() -> void:
 	_editor.redo()
 	var after_redo: int = _painted()
 	_report("desfazer/refazer", painted == 4 and after_undo == 0 and after_redo == 4, "pintado=%d desfeito=%d refeito=%d" % [painted, after_undo, after_redo])
+
+
+func _check_picker_returns_tool() -> void:
+	_editor.clear_canvas()
+	_editor.set_current_color(Color("7abf5a"))
+	_drag(PixelEditor.Tool.RECTANGLE, Vector2i(5, 5), Vector2i(9, 9))
+	_editor.set_tool(PixelEditor.Tool.PICKER)
+	_editor._begin_stroke(_cell_position(Vector2i(5, 5)), false)
+
+	var returned: bool = _editor.current_tool == PixelEditor.Tool.RECTANGLE
+	var took_color: bool = _editor.current_color.is_equal_approx(Color("7abf5a"))
+	_report("conta-gotas volta pra ferramenta anterior", returned and took_color,
+		"ferramenta=%d esperado=%d cor=%s" % [
+			_editor.current_tool, PixelEditor.Tool.RECTANGLE, _editor.current_color.to_html(false)
+		])
+
+
+func _check_alt_pick() -> void:
+	_editor.clear_canvas()
+	_editor.set_current_color(Color("d94f4f"))
+	_drag(PixelEditor.Tool.PENCIL, Vector2i(3, 3), Vector2i(3, 3))
+	_editor.set_current_color(Color("000000"))
+	var before: int = _painted()
+
+	_editor._begin_stroke(_cell_position(Vector2i(3, 3)), false, true)
+
+	var took_color: bool = _editor.current_color.is_equal_approx(Color("d94f4f"))
+	var kept_tool: bool = _editor.current_tool == PixelEditor.Tool.PENCIL
+	var painted_nothing: bool = _painted() == before
+	_report("alt+clique pega a cor sem trocar de ferramenta",
+		took_color and kept_tool and painted_nothing,
+		"cor=%s ferramenta=%d pixels=%d/%d" % [
+			_editor.current_color.to_html(false), _editor.current_tool, _painted(), before
+		])
 
 
 func _check_palette_size() -> void:
