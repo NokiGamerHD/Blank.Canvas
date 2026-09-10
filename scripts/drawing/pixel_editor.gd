@@ -64,6 +64,7 @@ var _last_cell: Vector2i = Vector2i(-1, -1)
 var _stroke_origin: Vector2i = Vector2i(-1, -1)
 var _preview_cells: Array[Vector2i] = []
 var _spray_countdown: float = 0.0
+var _tool_before_picker: Tool = Tool.PENCIL
 
 @onready var _canvas_background: TextureRect = $CanvasBackground
 @onready var _drawing_area: TextureRect = $DrawingArea
@@ -100,7 +101,11 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
-				_begin_stroke(event.position, event.button_index == MOUSE_BUTTON_RIGHT)
+				_begin_stroke(
+					event.position,
+					event.button_index == MOUSE_BUTTON_RIGHT,
+					event.alt_pressed
+				)
 			else:
 				_end_stroke(event.position)
 			accept_event()
@@ -134,12 +139,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func _begin_stroke(pos: Vector2, force_erase: bool) -> void:
+func _begin_stroke(pos: Vector2, force_erase: bool, force_pick: bool = false) -> void:
 	var cell: Vector2i = _position_to_cell(pos)
 	_stroke_erase = current_tool == Tool.ERASER or force_erase
 
+	if force_pick:
+		_pick_color(cell)
+		return
+
 	if current_tool == Tool.PICKER:
 		_pick_color(cell)
+		set_tool(_tool_before_picker)
 		return
 
 	if current_tool == Tool.BUCKET:
@@ -385,6 +395,8 @@ func set_brush_size(value: int) -> void:
 func set_tool(new_tool: Tool) -> void:
 	if new_tool == current_tool:
 		return
+	if new_tool == Tool.PICKER:
+		_tool_before_picker = current_tool
 	current_tool = new_tool
 	_reset_stroke()
 	_clear_preview()

@@ -142,6 +142,8 @@ func _fire_ability(data: AbilityData, target: EnemyBase) -> void:
 	var count: int = maxi(data.projectile_count, 1)
 	var spread: float = deg_to_rad(FAN_SPREAD_DEGREES)
 
+	AudioManager.play_shoot()
+
 	for i in count:
 		var angle_offset: float = (float(i) - float(count - 1) / 2.0) * spread
 		var fire_direction: Vector2 = base_direction.rotated(angle_offset)

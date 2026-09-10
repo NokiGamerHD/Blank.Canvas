@@ -57,6 +57,10 @@ const TOOL_ORDER: Array[int] = [
 	PixelEditor.Tool.SPRAY,
 ]
 
+const TOOL_HINT_KEYS: Dictionary = {
+	PixelEditor.Tool.PICKER: "creator.tool_picker_hint",
+}
+
 const TOOL_NAME_KEYS: Dictionary = {
 	PixelEditor.Tool.PENCIL: "creator.tool_pencil",
 	PixelEditor.Tool.ERASER: "creator.eraser",
@@ -285,7 +289,8 @@ func _apply_translations() -> void:
 	load_code_button.text = LocalizationManager.text("creator.load")
 	for tool_id in TOOL_ORDER:
 		var button: Button = _tool_buttons[tool_id]
-		button.tooltip_text = LocalizationManager.text(TOOL_NAME_KEYS[tool_id])
+		var hint_key: String = TOOL_HINT_KEYS.get(tool_id, TOOL_NAME_KEYS[tool_id])
+		button.tooltip_text = LocalizationManager.text(hint_key)
 	_update_tool_label()
 	_update_brush_label(int(brush_slider.value))
 	if not _feedback_key.is_empty():
