@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=13 format=3 uid="uid://bl4v7sextr6vu"]
 
 [ext_resource type="Script" path="res://scripts/game/arena.gd" id="1_arena"]
 [ext_resource type="Script" path="res://scripts/game/paint_canvas.gd" id="2_canvas"]
@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/progression_screen.tscn" id="6_prog"]
 [ext_resource type="PackedScene" path="res://scenes/ui/in_run_ability_creator.tscn" id="7_increator"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_screen.tscn" id="8_pause"]
-[ext_resource type="Texture2D" path="res://assets/backgrounds/canvas_grain.png" id="9_grain"]
+[ext_resource type="Texture2D" uid="uid://cqpoqbgnw2pbf" path="res://assets/backgrounds/canvas_grain.png" id="9_grain"]
 [ext_resource type="Shader" path="res://assets/shaders/canvas_board.gdshader" id="10_boardshader"]
 [ext_resource type="Script" path="res://scripts/game/board_canvas.gd" id="11_boardscript"]
 

@@ -3,6 +3,8 @@ extends CharacterBody2D
 
 signal died(enemy: EnemyBase)
 
+signal split_into(child: EnemyBase)
+
 enum EnemyType { COMMON, FAST, TANK, STALKER }
 
 enum Behavior { CHASE, ZIGZAG, ORBIT }
@@ -41,7 +43,7 @@ const PRESETS: Dictionary = {
 		"behavior": Behavior.CHASE,
 	},
 	EnemyType.TANK: {
-		"max_hp": 60.0,
+		"max_hp": 100.0,
 		"speed": 90.0,
 		"contact_damage": 25.0,
 		"collision_radius": 32.0,
@@ -53,6 +55,8 @@ const PRESETS: Dictionary = {
 		"sprite_scale": 0.30,
 		"shape": "square", "texture_half_size": 16, "color": Color("8a4fd9"),
 		"behavior": Behavior.CHASE,
+		"split_generations": 2, "split_scale": 0.68,
+		"explosion_radius": 92.0, "explosion_damage": 12.0, "explosion_paint_radius": 44.0,
 	},
 	EnemyType.STALKER: {
 		"max_hp": 12.0,
@@ -84,6 +88,11 @@ const GHOST_INTERVAL: float = 0.035
 const GHOST_FADE: float = 0.22
 const GHOST_ALPHA: float = 0.5
 const ORBIT_CORRECTION: float = 1.6
+const SCENE_PATH: String = "res://scenes/enemies/enemy_base.tscn"
+const EXPLOSION_PUFF_SCALE: float = 2.6
+const EXPLOSION_PUFF_TIME: float = 0.26
+const EXPLOSION_PUFF_ALPHA: float = 0.7
+const EXPLOSION_SPATTERS: int = 5
 
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 
@@ -125,6 +134,15 @@ var dash_duration: float = 0.0
 var dash_recover: float = 0.0
 var dash_cooldown: float = 0.0
 var dash_range: float = 0.0
+var split_generations: int = 0
+var split_scale: float = 1.0
+var explosion_radius: float = 0.0
+var explosion_damage: float = 0.0
+var explosion_paint_radius: float = 0.0
+
+@export var generation: int = 0
+
+@export var spawn_hp: float = -1.0
 
 var _damage_timer: float = 0.0
 var _dash_phase: DashPhase = DashPhase.READY
@@ -142,6 +160,8 @@ var _paint_canvas: PaintCanvas = null
 var _last_paint_position: Vector2 = Vector2.ZERO
 var _arena_bounds: Rect2 = Rect2()
 
+static var _scene_cache: PackedScene = null
+
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -155,12 +175,19 @@ func _ready() -> void:
 func _apply_preset() -> void:
 	var preset: Dictionary = PRESETS[enemy_type]
 
-	max_hp = preset["max_hp"]
+	split_generations = preset.get("split_generations", 0)
+	split_scale = preset.get("split_scale", 1.0)
+	var shrink: float = pow(split_scale, generation)
+
+	max_hp = spawn_hp if spawn_hp > 0.0 else preset["max_hp"]
 	current_hp = max_hp
-	contact_damage = preset["contact_damage"]
+	contact_damage = preset["contact_damage"] * shrink
 	trail_color = preset["trail_color"]
-	trail_radius = preset["trail_radius"]
-	collision_radius = preset["collision_radius"]
+	trail_radius = preset["trail_radius"] * shrink
+	collision_radius = preset["collision_radius"] * shrink
+	explosion_radius = preset.get("explosion_radius", 0.0) * shrink
+	explosion_damage = preset.get("explosion_damage", 0.0) * shrink
+	explosion_paint_radius = preset.get("explosion_paint_radius", 0.0) * shrink
 
 	speed = preset["speed"] * randf_range(0.9, 1.1)
 
@@ -187,7 +214,7 @@ func _apply_visual(preset: Dictionary) -> void:
 	var frames: SpriteFrames = _get_sprite_frames(enemy_type, preset)
 	if frames != null:
 		sprite.sprite_frames = frames
-		sprite.scale = Vector2.ONE * preset["sprite_scale"]
+		sprite.scale = Vector2.ONE * preset["sprite_scale"] * pow(split_scale, generation)
 		sprite.speed_scale = speed / preset["speed"]
 		sprite.play("walk")
 	else:
@@ -488,6 +515,9 @@ func take_damage(amount: float) -> void:
 	AudioManager.play_hit()
 	if current_hp <= 0.0:
 		_die()
+		return
+	if split_generations > 0 and generation < split_generations:
+		_split()
 
 
 func _flash_damage() -> void:
@@ -506,8 +536,92 @@ func _spawn_damage_number(amount: float) -> void:
 	number.setup(amount)
 
 
+func _split() -> void:
+	_is_dying = true
+	set_physics_process(false)
+	collision_shape.set_deferred("disabled", true)
+	_explode()
+
+	var child_hp: float = maxf(current_hp * 0.5, 1.0)
+	var scene: PackedScene = _get_scene()
+	var container: Node = get_parent()
+	if scene == null or container == null:
+		push_warning("[EnemyBase] Não foi possível dividir o inimigo; ele apenas morre.")
+		died.emit(self)
+		queue_free()
+		return
+
+	var heading: float = randf() * TAU
+	for i in 2:
+		var child: EnemyBase = scene.instantiate()
+		child.enemy_type = enemy_type
+		child.generation = generation + 1
+		child.spawn_hp = child_hp
+		child.position = global_position + Vector2.from_angle(heading + PI * i) * collision_radius
+		child.set_arena_bounds(_arena_bounds)
+		container.add_child.call_deferred(child)
+		split_into.emit(child)
+
+	died.emit(self)
+	queue_free()
+
+
+static func _get_scene() -> PackedScene:
+	if _scene_cache == null:
+		_scene_cache = load(SCENE_PATH)
+	return _scene_cache
+
+
+func _explode() -> void:
+	var canvas: PaintCanvas = _get_paint_canvas()
+	if canvas != null and explosion_paint_radius > 0.0:
+		canvas.paint_circle(global_position, explosion_paint_radius, trail_color)
+		for i in EXPLOSION_SPATTERS:
+			var offset: Vector2 = Vector2.from_angle(randf() * TAU) \
+				* randf_range(explosion_paint_radius * 0.7, explosion_paint_radius * 1.7)
+			canvas.paint_circle(
+				global_position + offset,
+				randf_range(explosion_paint_radius * 0.25, explosion_paint_radius * 0.55),
+				trail_color
+			)
+
+	var player: Player = _get_player()
+	if player != null and explosion_damage > 0.0 \
+			and global_position.distance_to(player.global_position) <= explosion_radius:
+		player.take_damage(explosion_damage)
+		player.apply_knockback(global_position)
+
+	AudioManager.play_enemy_explode()
+	_spawn_explosion_puff()
+
+
+func _spawn_explosion_puff() -> void:
+	var container: Node = get_tree().get_first_node_in_group("effects_container")
+	if container == null:
+		return
+	var frames: SpriteFrames = sprite.sprite_frames
+	if frames == null:
+		return
+
+	var puff: Sprite2D = Sprite2D.new()
+	puff.texture = frames.get_frame_texture(sprite.animation, sprite.frame)
+	puff.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	puff.scale = sprite.scale
+	puff.modulate = Color(1.0, 1.0, 1.0, EXPLOSION_PUFF_ALPHA)
+	container.add_child(puff)
+	puff.global_position = global_position
+
+	var tween: Tween = puff.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(puff, "scale", sprite.scale * EXPLOSION_PUFF_SCALE, EXPLOSION_PUFF_TIME)
+	tween.tween_property(puff, "modulate:a", 0.0, EXPLOSION_PUFF_TIME)
+	tween.finished.connect(puff.queue_free)
+
+
 func _die() -> void:
 	_is_dying = true
+	if split_generations > 0:
+		_explode()
 	_splat_on_death()
 	AudioManager.play_enemy_death()
 	died.emit(self)

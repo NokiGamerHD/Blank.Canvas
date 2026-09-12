@@ -8,8 +8,10 @@ const ENEMY_DEATH_SOUND: AudioStream = preload("res://assets/audio/enemy_death.w
 const PLAYER_HURT_SOUND: AudioStream = preload("res://assets/audio/player_hurt.wav")
 const SHOOT_SOUND: AudioStream = preload("res://assets/audio/shoot.wav")
 const ENEMY_DASH_SOUND: AudioStream = preload("res://assets/audio/enemy_dash.wav")
+const ENEMY_EXPLODE_SOUND: AudioStream = preload("res://assets/audio/enemy_explode.wav")
 const SHOOT_MIN_GAP: float = 0.05
 const ENEMY_DASH_MIN_GAP: float = 0.09
+const ENEMY_EXPLODE_MIN_GAP: float = 0.11
 const WARM_UP_VOLUME_DB: float = -80.0
 
 const POOL_SIZE: int = 12
@@ -91,6 +93,10 @@ func play_shoot() -> void:
 
 func play_enemy_dash() -> void:
 	_play_spaced(ENEMY_DASH_SOUND, ENEMY_DASH_MIN_GAP)
+
+
+func play_enemy_explode() -> void:
+	_play_spaced(ENEMY_EXPLODE_SOUND, ENEMY_EXPLODE_MIN_GAP)
 
 
 func is_audible() -> bool:

@@ -6,6 +6,9 @@ const INDICATOR_DEMO_SCENE: String = "res://scenes/enemies/enemy_base.tscn"
 const INDICATOR_DEMO_DISTANCE: float = 520.0
 const DASH_DEMO_DISTANCE: float = 250.0
 const DASH_DEMO_DELAY: float = 0.34
+const SPLIT_DEMO_DISTANCE: float = 190.0
+const SPLIT_DEMO_DAMAGE: float = 8.0
+const SPLIT_DEMO_DELAY: float = 0.12
 const ZIGZAG_DEMO_DISTANCE: float = 560.0
 const ZIGZAG_DEMO_SECONDS: float = 3.2
 
@@ -137,6 +140,10 @@ func _capture_arena() -> void:
 		await get_tree().create_timer(ZIGZAG_DEMO_SECONDS).timeout
 		await _capture("15_zigue_zague_do_vermelho")
 
+	if _spawn_split_demo(arena):
+		await get_tree().create_timer(SPLIT_DEMO_DELAY).timeout
+		await _capture("16_divisao_do_verde")
+
 	if _spawn_dash_demo(arena):
 		await get_tree().create_timer(DASH_DEMO_DELAY).timeout
 		await _capture("14_dash_do_amarelo")
@@ -193,6 +200,30 @@ func _spawn_zigzag_demo(arena: Arena) -> bool:
 			+ Vector2.from_angle(angle) * ZIGZAG_DEMO_DISTANCE
 		arena.enemies_container.add_child(enemy)
 		enemy.dash_range = 0.0
+	return true
+
+
+func _spawn_split_demo(arena: Arena) -> bool:
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	if scene == null:
+		return false
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+
+	var greens: Array[EnemyBase] = []
+	for index in 3:
+		var enemy: EnemyBase = scene.instantiate()
+		enemy.enemy_type = EnemyBase.EnemyType.TANK
+		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		var angle: float = TAU * float(index) / 3.0 - PI / 5.0
+		enemy.position = arena.player.global_position \
+			+ Vector2.from_angle(angle) * SPLIT_DEMO_DISTANCE
+		arena.enemies_container.add_child(enemy)
+		enemy.set_physics_process(false)
+		greens.append(enemy)
+
+	for enemy in greens:
+		enemy.take_damage(SPLIT_DEMO_DAMAGE)
 	return true
 
 
