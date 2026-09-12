@@ -103,6 +103,12 @@ func _on_spawn_timer_timeout() -> void:
 		_spawn_timer.stop()
 
 
+func _on_enemy_split(child: EnemyBase) -> void:
+	child.died.connect(_on_enemy_died)
+	child.split_into.connect(_on_enemy_split)
+	_alive += 1
+
+
 func _on_enemy_died(_enemy: EnemyBase) -> void:
 	_alive -= 1
 	if _to_spawn <= 0 and _alive <= 0:
@@ -211,6 +217,7 @@ func _spawn_enemy(type: EnemyBase.EnemyType, spawn_position: Vector2) -> void:
 	enemy.position = spawn_position
 	enemy.set_arena_bounds(Rect2(Vector2.ZERO, _arena.arena_size))
 	enemy.died.connect(_on_enemy_died)
+	enemy.split_into.connect(_on_enemy_split)
 	_enemies_container.add_child(enemy)
 	enemy.apply_wave_scaling(1.0 + hp_scale_per_wave * (current_wave - 1))
 	_alive += 1
