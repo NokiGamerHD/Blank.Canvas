@@ -22,8 +22,10 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 ## How to play
 
 - **WASD** or **arrow keys** — move
-- Your abilities fire **automatically** at the closest enemy — focus on
-  surviving (and drawing)
+- **Mouse** — aim
+- **Left mouse button** — shoot toward the cursor (hold it to keep firing)
+- **Space** or **Shift** — dash, with a short moment of invulnerability that
+  lets you pass through enemies
 - Every 5 waves, choose to **upgrade an ability** or **draw a new ability**
 - Survive as many waves as you can
 
@@ -33,8 +35,7 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   color palette, brush, eraser, and undo/redo
 - Cumulative arena painting: enemy trails and projectile impacts
   permanently paint the canvas
-- Auto-aim with configurable targeting modes (nearest, lowest health,
-  farthest, random, and more)
+- Mouse aiming and a dash with invulnerability frames and its own cooldown
 - Endless waves with increasing difficulty and enemy variety
 - Progression every 5 waves: random upgrades or a new ability
 - English/Portuguese localization, switchable from the main menu

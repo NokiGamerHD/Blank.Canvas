@@ -9,6 +9,7 @@ const PLAYER_HURT_SOUND: AudioStream = preload("res://assets/audio/player_hurt.w
 const SHOOT_SOUND: AudioStream = preload("res://assets/audio/shoot.wav")
 const ENEMY_DASH_SOUND: AudioStream = preload("res://assets/audio/enemy_dash.wav")
 const ENEMY_EXPLODE_SOUND: AudioStream = preload("res://assets/audio/enemy_explode.wav")
+const PLAYER_DASH_SOUND: AudioStream = preload("res://assets/audio/player_dash.wav")
 const SHOOT_MIN_GAP: float = 0.05
 const ENEMY_DASH_MIN_GAP: float = 0.09
 const ENEMY_EXPLODE_MIN_GAP: float = 0.11
@@ -97,6 +98,10 @@ func play_enemy_dash() -> void:
 
 func play_enemy_explode() -> void:
 	_play_spaced(ENEMY_EXPLODE_SOUND, ENEMY_EXPLODE_MIN_GAP)
+
+
+func play_player_dash() -> void:
+	_play(PLAYER_DASH_SOUND)
 
 
 func is_audible() -> bool:

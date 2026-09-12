@@ -7,10 +7,12 @@ const INDICATOR_DEMO_DISTANCE: float = 520.0
 const DASH_DEMO_DISTANCE: float = 250.0
 const DASH_DEMO_DELAY: float = 0.34
 const SPLIT_DEMO_DISTANCE: float = 190.0
-const SPLIT_DEMO_DAMAGE: float = 8.0
+const SPLIT_DEMO_DAMAGE: float = 20.0
 const SPLIT_DEMO_DELAY: float = 0.12
 const ZIGZAG_DEMO_DISTANCE: float = 560.0
 const ZIGZAG_DEMO_SECONDS: float = 3.2
+const PLAYER_DASH_DEMO_DELAY: float = 0.1
+const CROSSHAIR_PREVIEW_SCALE: int = 4
 
 @export var arena_seconds: float = 8.0
 
@@ -76,7 +78,15 @@ func _capture(file_name: String) -> void:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 
-	var image: Image = get_viewport().get_texture().get_image()
+	_save_image(get_viewport().get_texture().get_image(), file_name)
+
+
+func _capture_immediately(file_name: String) -> void:
+	await RenderingServer.frame_post_draw
+	_save_image(get_viewport().get_texture().get_image(), file_name)
+
+
+func _save_image(image: Image, file_name: String) -> void:
 	var path: String = "%s/%s.png" % [OUTPUT_DIR, file_name]
 	var save_error: int = image.save_png(path)
 	if save_error != OK:
@@ -96,9 +106,12 @@ func _capture_main_menu() -> void:
 	await _capture("02_menu_som")
 	menu.get_node("AudioPanel").visible = false
 
-	AudioManager.set_muted(true)
+	var was_muted: bool = AudioManager.muted
+	AudioManager.muted = true
+	AudioManager.audio_settings_changed.emit()
 	await _capture("03_menu_mudo")
-	AudioManager.set_muted(false)
+	AudioManager.muted = was_muted
+	AudioManager.audio_settings_changed.emit()
 
 	await _clear_scene(menu)
 
@@ -121,6 +134,8 @@ func _capture_arena() -> void:
 	var arena: Node = _show_scene(GameManager.SCENE_ARENA)
 	if arena == null:
 		return
+	await _capture("18_dica_de_controles")
+	_save_crosshair_preview()
 	await get_tree().create_timer(arena_seconds).timeout
 	await _capture("04_arena_minimapa")
 
@@ -129,8 +144,10 @@ func _capture_arena() -> void:
 	arena.get_node("PauseScreen").close()
 
 	var controller: AbilityController = arena.get_node("Player/AbilityController")
-	arena.get_node("ProgressionScreen").open(5, controller.get_abilities())
+	arena.get_node("ProgressionScreen").open(5, controller.get_abilities(), arena.player)
 	await _capture("10_arena_progressao")
+	if _show_dash_upgrade_option(arena.get_node("ProgressionScreen")):
+		await _capture("20_arena_upgrades")
 	arena.get_node("ProgressionScreen").close()
 
 	if _spawn_indicator_demo(arena):
@@ -143,6 +160,10 @@ func _capture_arena() -> void:
 	if _spawn_split_demo(arena):
 		await get_tree().create_timer(SPLIT_DEMO_DELAY).timeout
 		await _capture("16_divisao_do_verde")
+
+	if _start_player_dash_demo(arena):
+		await get_tree().create_timer(PLAYER_DASH_DEMO_DELAY).timeout
+		await _capture_immediately("17_dash_do_jogador")
 
 	if _spawn_dash_demo(arena):
 		await get_tree().create_timer(DASH_DEMO_DELAY).timeout
@@ -261,3 +282,36 @@ func _capture_game_over() -> void:
 	if record != null:
 		await _capture("07_game_over_recorde")
 		await _clear_scene(record)
+
+
+func _start_player_dash_demo(arena: Arena) -> bool:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	return arena.player.try_dash(Vector2.RIGHT)
+
+
+func _save_crosshair_preview() -> void:
+	var crosshair: Image = Arena.build_crosshair_image()
+	var width: int = crosshair.get_width()
+	var height: int = crosshair.get_height()
+	var preview: Image = Image.create(width * 2, height, false, Image.FORMAT_RGBA8)
+	preview.fill(Color.WHITE)
+	preview.fill_rect(Rect2i(width, 0, width, height), Color("15b10f"))
+	preview.blend_rect(crosshair, Rect2i(Vector2i.ZERO, crosshair.get_size()), Vector2i.ZERO)
+	preview.blend_rect(crosshair, Rect2i(Vector2i.ZERO, crosshair.get_size()), Vector2i(width, 0))
+	preview.resize(width * 2 * CROSSHAIR_PREVIEW_SCALE, height * CROSSHAIR_PREVIEW_SCALE, Image.INTERPOLATE_NEAREST)
+	_save_image(preview, "19_mira")
+
+
+
+func _show_dash_upgrade_option(screen: Node) -> bool:
+	var dash_text: String = LocalizationManager.text("upgrade.dash")
+	screen._on_upgrade_button_pressed()
+	for attempt in 40:
+		for child in screen.upgrade_options.get_children():
+			var button: Button = child as Button
+			if button != null and not button.is_queued_for_deletion() and button.text.contains(dash_text):
+				return true
+		screen._build_upgrade_options()
+	push_warning("[ScreenshotHarness] O upgrade de dash não apareceu em 40 sorteios.")
+	return false
