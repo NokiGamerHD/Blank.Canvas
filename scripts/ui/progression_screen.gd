@@ -4,18 +4,26 @@ signal upgrade_chosen
 signal new_ability_chosen
 
 const UPGRADE_POOL: Array[Dictionary] = [
-	{"id": "damage", "text_key": "upgrade.damage"},
-	{"id": "cooldown", "text_key": "upgrade.cooldown"},
-	{"id": "count", "text_key": "upgrade.count"},
-	{"id": "size", "text_key": "upgrade.size"},
-	{"id": "pierce", "text_key": "upgrade.pierce"},
-	{"id": "speed", "text_key": "upgrade.speed"},
-	{"id": "range", "text_key": "upgrade.range"},
+	{"id": "damage", "text_key": "upgrade.damage", "global": false},
+	{"id": "cooldown", "text_key": "upgrade.cooldown", "global": false},
+	{"id": "count", "text_key": "upgrade.count", "global": false},
+	{"id": "size", "text_key": "upgrade.size", "global": false},
+	{"id": "pierce", "text_key": "upgrade.pierce", "global": false},
+	{"id": "speed", "text_key": "upgrade.speed", "global": false},
+	{"id": "dash", "text_key": "upgrade.dash", "global": true},
 ]
 
-const MAX_PROJECTILE_COUNT: int = 8
-const MAX_SIZE_SCALE: float = 2.5
-const MAX_PIERCING: int = 6
+const DAMAGE_MULTIPLIER: float = 1.5
+const COOLDOWN_MULTIPLIER: float = 0.75
+const COUNT_STEP: int = 2
+const SIZE_MULTIPLIER: float = 1.5
+const PIERCE_STEP: int = 2
+const SPEED_MULTIPLIER: float = 1.3
+const DASH_COOLDOWN_MULTIPLIER: float = 0.7
+
+const MAX_PROJECTILE_COUNT: int = 9
+const MAX_SIZE_SCALE: float = 3.0
+const MAX_PIERCING: int = 8
 const MIN_COOLDOWN: float = 0.15
 
 @onready var title_label: Label = $Dim/CenterContainer/Panel/Content/TitleLabel
@@ -31,6 +39,7 @@ const MIN_COOLDOWN: float = 0.15
 @onready var upgrade_subtitle: Label = $Dim/CenterContainer/Panel/Content/UpgradePage/UpgradeSubtitle
 
 var _abilities: Array[AbilityData] = []
+var _player: Player = null
 var _current_wave: int = 5
 
 
@@ -43,8 +52,9 @@ func _ready() -> void:
 	_apply_translations()
 
 
-func open(wave: int, abilities: Array[AbilityData]) -> void:
+func open(wave: int, abilities: Array[AbilityData], player: Player = null) -> void:
 	_abilities = abilities
+	_player = player
 	_current_wave = wave
 	title_label.text = LocalizationManager.text("progression.wave_complete", [_current_wave])
 	_show_choice_page()
@@ -87,7 +97,11 @@ func _build_upgrade_options() -> void:
 	for child in upgrade_options.get_children():
 		child.queue_free()
 
-	var pool: Array[Dictionary] = UPGRADE_POOL.duplicate()
+	var pool: Array[Dictionary] = []
+	for entry in UPGRADE_POOL:
+		if entry["global"] and _player == null:
+			continue
+		pool.append(entry)
 	pool.shuffle()
 
 	for i in mini(3, pool.size()):
@@ -95,7 +109,7 @@ func _build_upgrade_options() -> void:
 		var target: AbilityData = _abilities.pick_random()
 
 		var label: String = LocalizationManager.text(entry["text_key"])
-		if _abilities.size() > 1:
+		if _abilities.size() > 1 and not entry["global"]:
 			label = "%s: %s" % [target.display_name(), label]
 
 		var button: Button = Button.new()
@@ -114,18 +128,21 @@ func _on_upgrade_option_pressed(upgrade_id: String, target: AbilityData) -> void
 func _apply_upgrade(upgrade_id: String, data: AbilityData) -> void:
 	match upgrade_id:
 		"damage":
-			data.damage *= 1.25
+			data.damage *= DAMAGE_MULTIPLIER
 		"cooldown":
-			data.cooldown = maxf(data.cooldown * 0.85, MIN_COOLDOWN)
+			data.cooldown = maxf(data.cooldown * COOLDOWN_MULTIPLIER, MIN_COOLDOWN)
 		"count":
-			data.projectile_count = mini(data.projectile_count + 1, MAX_PROJECTILE_COUNT)
+			data.projectile_count = mini(data.projectile_count + COUNT_STEP, MAX_PROJECTILE_COUNT)
 		"size":
-			data.size_scale = minf(data.size_scale * 1.2, MAX_SIZE_SCALE)
+			data.size_scale = minf(data.size_scale * SIZE_MULTIPLIER, MAX_SIZE_SCALE)
 		"pierce":
-			data.piercing = mini(data.piercing + 1, MAX_PIERCING)
+			data.piercing = mini(data.piercing + PIERCE_STEP, MAX_PIERCING)
 		"speed":
-			data.projectile_speed *= 1.15
-		"range":
-			data.attack_range *= 1.10
+			data.projectile_speed *= SPEED_MULTIPLIER
+		"dash":
+			if _player == null:
+				push_warning("[ProgressionScreen] Upgrade de dash sem jogador; ignorado.")
+				return
+			_player.reduce_dash_cooldown(DASH_COOLDOWN_MULTIPLIER)
 		_:
 			push_warning("[ProgressionScreen] Upgrade desconhecido: %s" % upgrade_id)

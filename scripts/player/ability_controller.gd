@@ -1,21 +1,15 @@
 class_name AbilityController
 extends Node
 
-enum TargetMode { NEAREST, LOWEST_HP, FARTHEST, RANDOM, FIRST }
-
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/abilities/projectile.tscn")
 
 const FAN_SPREAD_DEGREES: float = 12.0
 
-@export var target_mode: TargetMode = TargetMode.NEAREST
-
-@export var cooldown: float = 1.2
-
-@export var attack_range: float = 380.0
+@export var cooldown: float = 1.0
 
 @export var damage: float = 20.0
 
-@export var projectile_speed: float = 600.0
+@export var projectile_speed: float = 720.0
 
 @export var ability_index: int = 0
 
@@ -45,22 +39,18 @@ func _build_initial_ability() -> AbilityData:
 	data.damage = damage
 	data.cooldown = cooldown
 	data.projectile_speed = projectile_speed
-	data.attack_range = attack_range
-	data.target_mode = target_mode
 	return data
 
 
 func _physics_process(delta: float) -> void:
+	var wants_to_fire: bool = Input.is_action_pressed("fire")
+	var aim_direction: Vector2 = _aim_direction()
+
 	for data in abilities:
 		data.cooldown_remaining = maxf(data.cooldown_remaining - delta, 0.0)
-		if data.cooldown_remaining > 0.0:
+		if data.cooldown_remaining > 0.0 or not wants_to_fire:
 			continue
-
-		var target: EnemyBase = _select_target(data)
-		if target == null:
-			continue
-
-		_fire_ability(data, target)
+		_fire_ability(data, aim_direction)
 		data.cooldown_remaining = data.cooldown
 
 
@@ -76,8 +66,6 @@ func add_ability(index: int) -> void:
 	new_ability.ability_index = index
 	new_ability.damage = damage
 	new_ability.projectile_speed = projectile_speed
-	new_ability.attack_range = attack_range
-	new_ability.target_mode = target_mode
 
 	var extra_index: int = abilities.size()
 	new_ability.cooldown = cooldown * pow(additional_ability_cooldown_multiplier, extra_index)
@@ -89,55 +77,14 @@ func get_abilities() -> Array[AbilityData]:
 	return abilities
 
 
-func _select_target(data: AbilityData) -> EnemyBase:
-	var origin: Vector2 = _player.global_position
-	var candidates: Array[EnemyBase] = []
-	for node in get_tree().get_nodes_in_group("enemies"):
-		var enemy: EnemyBase = node as EnemyBase
-		if enemy == null:
-			continue
-		if origin.distance_to(enemy.global_position) <= data.attack_range:
-			candidates.append(enemy)
-
-	if candidates.is_empty():
-		return null
-
-	match data.target_mode:
-		TargetMode.NEAREST:
-			return _pick_by_distance(candidates, origin, true)
-		TargetMode.FARTHEST:
-			return _pick_by_distance(candidates, origin, false)
-		TargetMode.LOWEST_HP:
-			return _pick_lowest_hp(candidates)
-		TargetMode.RANDOM:
-			return candidates.pick_random()
-		TargetMode.FIRST:
-			return candidates[0]
-	return candidates[0]
+func _aim_direction() -> Vector2:
+	var direction: Vector2 = (_player.aim_position() - _player.global_position).normalized()
+	if direction.is_zero_approx():
+		return Vector2.LEFT if _player.sprite.flip_h else Vector2.RIGHT
+	return direction
 
 
-func _pick_by_distance(candidates: Array[EnemyBase], origin: Vector2, nearest: bool) -> EnemyBase:
-	var best: EnemyBase = candidates[0]
-	var best_distance: float = origin.distance_squared_to(best.global_position)
-	for enemy in candidates:
-		var distance: float = origin.distance_squared_to(enemy.global_position)
-		var is_better: bool = distance < best_distance if nearest else distance > best_distance
-		if is_better:
-			best = enemy
-			best_distance = distance
-	return best
-
-
-func _pick_lowest_hp(candidates: Array[EnemyBase]) -> EnemyBase:
-	var best: EnemyBase = candidates[0]
-	for enemy in candidates:
-		if enemy.current_hp < best.current_hp:
-			best = enemy
-	return best
-
-
-func _fire_ability(data: AbilityData, target: EnemyBase) -> void:
-	var base_direction: Vector2 = (target.global_position - _player.global_position).normalized()
+func _fire_ability(data: AbilityData, base_direction: Vector2) -> void:
 	var texture: ImageTexture = GameManager.get_ability_texture(data.ability_index)
 	var count: int = maxi(data.projectile_count, 1)
 	var spread: float = deg_to_rad(FAN_SPREAD_DEGREES)

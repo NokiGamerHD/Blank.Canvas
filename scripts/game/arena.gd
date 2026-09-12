@@ -11,6 +11,27 @@ extends Node2D
 
 @export var outside_color: Color = Color(0.82, 0.82, 0.8, 1)
 
+const CROSSHAIR_PATTERN: Array[String] = [
+	"......+++......",
+	"......+#+......",
+	"......+#+......",
+	"......+#+......",
+	"......+++......",
+	"...............",
+	"+++++.+++.+++++",
+	"+###+.+#+.+###+",
+	"+++++.+++.+++++",
+	"...............",
+	"......+++......",
+	"......+#+......",
+	"......+#+......",
+	"......+#+......",
+	"......+++......",
+]
+const CROSSHAIR_SCALE: int = 2
+const CROSSHAIR_INK: Color = Color(0.1, 0.1, 0.1, 1.0)
+const CROSSHAIR_OUTLINE: Color = Color(1.0, 1.0, 1.0, 1.0)
+
 @onready var boundaries: StaticBody2D = $Boundaries
 @onready var board_canvas: BoardCanvas = $BoardCanvas
 @onready var paint_canvas: PaintCanvas = $PaintCanvas
@@ -35,7 +56,13 @@ func _ready() -> void:
 	_setup_hud()
 	_setup_progression()
 	_setup_pause()
+	_apply_crosshair_cursor()
 	player.died.connect(_on_player_died_capture_canvas)
+
+
+func _exit_tree() -> void:
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	Input.set_custom_mouse_cursor(null, Input.CURSOR_CROSS)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -81,6 +108,7 @@ func _setup_hud() -> void:
 	hud.update_hp(player.current_hp, player.max_hp)
 	wave_manager.wave_changed.connect(hud.update_wave)
 	hud.setup_abilities(ability_controller)
+	hud.setup_player(player)
 	hud.setup_minimap(self)
 	hud.setup_enemy_indicators(self)
 
@@ -100,7 +128,7 @@ func _on_wave_completed(_wave: int) -> void:
 
 func _on_progression_due(wave: int) -> void:
 	player.heal_to_full()
-	progression_screen.open(wave, ability_controller.get_abilities())
+	progression_screen.open(wave, ability_controller.get_abilities(), player)
 
 
 func _on_progression_upgrade_chosen() -> void:
@@ -140,3 +168,27 @@ func _setup_pause() -> void:
 
 func _on_player_died_capture_canvas() -> void:
 	GameManager.set_last_canvas_snapshot(paint_canvas.get_image_copy())
+
+
+func _apply_crosshair_cursor() -> void:
+	var image: Image = build_crosshair_image()
+	var hotspot: Vector2 = Vector2(image.get_width(), image.get_height()) / 2.0
+	Input.set_custom_mouse_cursor(ImageTexture.create_from_image(image), Input.CURSOR_CROSS, hotspot)
+	Input.set_default_cursor_shape(Input.CURSOR_CROSS)
+
+
+static func build_crosshair_image() -> Image:
+	var height: int = CROSSHAIR_PATTERN.size()
+	var width: int = CROSSHAIR_PATTERN[0].length()
+	var image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in height:
+		var row: String = CROSSHAIR_PATTERN[y]
+		for x in mini(width, row.length()):
+			match row[x]:
+				"#":
+					image.set_pixel(x, y, CROSSHAIR_INK)
+				"+":
+					image.set_pixel(x, y, CROSSHAIR_OUTLINE)
+	image.resize(width * CROSSHAIR_SCALE, height * CROSSHAIR_SCALE, Image.INTERPOLATE_NEAREST)
+	return image
