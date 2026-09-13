@@ -131,6 +131,7 @@ func _apply_upgrade(upgrade_id: String, data: AbilityData) -> void:
 			data.damage *= DAMAGE_MULTIPLIER
 		"cooldown":
 			data.cooldown = maxf(data.cooldown * COOLDOWN_MULTIPLIER, MIN_COOLDOWN)
+			data.charge_time = maxf(data.charge_time * COOLDOWN_MULTIPLIER, AbilityData.MIN_CHARGE_TIME)
 		"count":
 			data.projectile_count = mini(data.projectile_count + COUNT_STEP, MAX_PROJECTILE_COUNT)
 		"size":

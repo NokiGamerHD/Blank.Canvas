@@ -3,7 +3,7 @@ extends Node
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "2.0.0"
+const VERSION: String = "2.1.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -20,6 +20,7 @@ const SAVED_SCENARIOS_DIR: String = "user://saved_scenarios"
 
 
 const SETTINGS_PATH: String = "user://settings.cfg"
+const SHOT_TYPES_SECTION: String = "shot_types"
 const PROGRESS_SECTION: String = "progress"
 const BEST_WAVE_KEY: String = "best_wave"
 const PALETTE_SECTION: String = "palette"
@@ -30,6 +31,7 @@ const MAX_CUSTOM_COLORS: int = 10
 var character_image: Image = null
 
 var ability_images: Array[Image] = []
+var ability_shot_types: Array[int] = []
 
 var last_wave_reached: int = 0
 
@@ -101,6 +103,7 @@ func quit_game() -> void:
 func reset_run_data() -> void:
 	character_image = null
 	ability_images.clear()
+	ability_shot_types.clear()
 	last_wave_reached = 0
 	last_canvas_snapshot = null
 	last_run_was_record = false
@@ -185,6 +188,8 @@ func restart_run() -> bool:
 	last_run_was_record = false
 	if ability_images.size() > 1:
 		ability_images.resize(1)
+	if ability_shot_types.size() > 1:
+		ability_shot_types.resize(1)
 	return go_to_arena()
 
 
@@ -245,6 +250,44 @@ func has_ability_drawing(index: int) -> bool:
 	return get_ability_drawing(index) != null
 
 
+func set_ability_shot_type(index: int, shot_type: int) -> void:
+	while ability_shot_types.size() <= index:
+		ability_shot_types.append(-1)
+	ability_shot_types[index] = shot_type
+
+
+func get_ability_shot_type(index: int) -> int:
+	if index < 0 or index >= ability_shot_types.size():
+		return -1
+	return ability_shot_types[index]
+
+
+func _shot_types_path() -> String:
+	return "%s/shot_types.cfg" % DRAWINGS_DIR
+
+
+func _save_ability_shot_type(index: int) -> bool:
+	var shot_type: int = get_ability_shot_type(index)
+	if shot_type < 0:
+		return true
+	var shot_types: ConfigFile = ConfigFile.new()
+	shot_types.load(_shot_types_path())
+	shot_types.set_value(SHOT_TYPES_SECTION, str(index), shot_type)
+	var save_error: int = shot_types.save(_shot_types_path())
+	if save_error != OK:
+		push_warning("[GameManager] Falha ao salvar o tipo de tiro da habilidade %d (erro %d)." % [index, save_error])
+		return false
+	return true
+
+
+func _load_ability_shot_type(index: int) -> void:
+	var shot_types: ConfigFile = ConfigFile.new()
+	if shot_types.load(_shot_types_path()) != OK:
+		set_ability_shot_type(index, -1)
+		return
+	set_ability_shot_type(index, shot_types.get_value(SHOT_TYPES_SECTION, str(index), -1))
+
+
 func get_ability_texture(index: int) -> ImageTexture:
 	var image: Image = get_ability_drawing(index)
 	if image == null:
@@ -269,7 +312,7 @@ func save_ability_drawing_to_disk(index: int) -> bool:
 	if save_error != OK:
 		push_warning("[GameManager] Falha ao salvar a habilidade %d (erro %d)." % [index, save_error])
 		return false
-	return true
+	return _save_ability_shot_type(index)
 
 
 func load_ability_drawing_from_disk(index: int) -> bool:
@@ -282,6 +325,7 @@ func load_ability_drawing_from_disk(index: int) -> bool:
 		push_warning("[GameManager] Falha ao carregar a habilidade %d (erro %d)." % [index, load_error])
 		return false
 	set_ability_drawing(index, image)
+	_load_ability_shot_type(index)
 	return true
 
 

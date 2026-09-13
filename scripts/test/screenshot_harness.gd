@@ -13,6 +13,9 @@ const ZIGZAG_DEMO_DISTANCE: float = 560.0
 const ZIGZAG_DEMO_SECONDS: float = 3.2
 const PLAYER_DASH_DEMO_DELAY: float = 0.1
 const CROSSHAIR_PREVIEW_SCALE: int = 4
+const CHARGE_DEMO_HOLD: float = 1.3
+const CHARGE_DEMO_FLIGHT: float = 0.12
+const HARNESS_INVULNERABILITY: float = 1.0e9
 
 @export var arena_seconds: float = 8.0
 
@@ -127,6 +130,10 @@ func _capture_creators() -> void:
 	var ability: Node = _show_scene(GameManager.SCENE_ABILITY_CREATOR)
 	if ability != null:
 		await _capture("09_criador_habilidade")
+		if ability.open_shot_picker():
+			await _capture("21_escolha_de_tiro")
+			ability.get_shot_picker().select(AbilityData.ShotType.CHARGE)
+			await _capture("22_escolha_de_tiro_marcado")
 		await _clear_scene(ability)
 
 
@@ -134,6 +141,7 @@ func _capture_arena() -> void:
 	var arena: Node = _show_scene(GameManager.SCENE_ARENA)
 	if arena == null:
 		return
+	_keep_player_alive(arena)
 	await _capture("18_dica_de_controles")
 	_save_crosshair_preview()
 	await get_tree().create_timer(arena_seconds).timeout
@@ -164,6 +172,9 @@ func _capture_arena() -> void:
 	if _start_player_dash_demo(arena):
 		await get_tree().create_timer(PLAYER_DASH_DEMO_DELAY).timeout
 		await _capture_immediately("17_dash_do_jogador")
+		_keep_player_alive(arena)
+
+	await _capture_charge_demo(arena)
 
 	if _spawn_dash_demo(arena):
 		await get_tree().create_timer(DASH_DEMO_DELAY).timeout
@@ -173,6 +184,14 @@ func _capture_arena() -> void:
 	var in_run_creator: DrawingCreatorBase = in_run_layer.get_node("AbilityCreator")
 	in_run_layer.visible = true
 	get_tree().paused = true
+	var locked_image: Image = Image.create(36, 36, false, Image.FORMAT_RGBA8)
+	locked_image.fill(Color(0, 0, 0, 0))
+	locked_image.fill_rect(Rect2i(13, 13, 10, 10), Color("f2913d"))
+	in_run_creator.pixel_editor.load_from_image(locked_image)
+	var in_run_ability: Node = in_run_creator
+	if in_run_ability.open_shot_picker():
+		await _capture("25_escolha_travada_em_partida")
+		in_run_ability.get_shot_picker().close()
 	if in_run_creator.open_color_dialog():
 		await _capture("12_seletor_de_cor_em_partida")
 	get_tree().paused = false
@@ -315,3 +334,24 @@ func _show_dash_upgrade_option(screen: Node) -> bool:
 		screen._build_upgrade_options()
 	push_warning("[ScreenshotHarness] O upgrade de dash não apareceu em 40 sorteios.")
 	return false
+
+
+func _capture_charge_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var controller: AbilityController = arena.ability_controller
+	var data: AbilityData = controller.get_abilities()[0]
+	data.apply_shot_type(AbilityData.ShotType.CHARGE, controller.damage, controller.cooldown, controller.projectile_speed)
+	data.cooldown_remaining = 0.0
+	arena.player.set_aim_override(arena.player.global_position + Vector2(220.0, -70.0))
+	Input.action_press("fire")
+	await get_tree().create_timer(CHARGE_DEMO_HOLD).timeout
+	await _capture("23_tiro_carregando")
+	Input.action_release("fire")
+	await get_tree().create_timer(CHARGE_DEMO_FLIGHT).timeout
+	await _capture_immediately("24_disparo_carregado")
+	data.apply_shot_type(AbilityData.ShotType.STANDARD, controller.damage, controller.cooldown, controller.projectile_speed)
+
+
+func _keep_player_alive(arena: Arena) -> void:
+	arena.player._invulnerable_timer = HARNESS_INVULNERABILITY
