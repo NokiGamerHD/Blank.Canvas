@@ -3,11 +3,16 @@ extends Area2D
 
 static var _paint_color_cache: Dictionary = {}
 
+const HOMING_START_FRACTION: float = 0.4
+const HOMING_RADIUS: float = 260.0
+const HOMING_CONE: float = 0.25
+const HOMING_CLOSE_BOOST: float = 2.5
+
 @export var speed: float = 600.0
 
 @export var damage: float = 20.0
 
-@export var max_lifetime: float = 3.0
+@export var max_distance: float = 700.0
 
 @export var paint_radius: float = 9.0
 
@@ -17,7 +22,12 @@ var pierce_remaining: int = 0
 
 var size_scale: float = 1.0
 
+var homing_turn_rate: float = 0.0
+
 var _has_impacted: bool = false
+var _travelled: float = 0.0
+var _homing_target: EnemyBase = null
+var _homing_lost: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -40,13 +50,50 @@ func _ready() -> void:
 	rotation = direction.angle()
 	scale = Vector2.ONE * size_scale
 
-	get_tree().create_timer(max_lifetime).timeout.connect(_on_lifetime_expired)
-
 
 func _physics_process(delta: float) -> void:
 	if _has_impacted:
 		return
-	global_position += direction * speed * delta
+	if homing_turn_rate > 0.0 and not _homing_lost and _travelled >= max_distance * HOMING_START_FRACTION:
+		_steer_toward_target(delta)
+	var step: float = speed * delta
+	global_position += direction * step
+	_travelled += step
+	if _travelled >= max_distance:
+		_finish_impact()
+
+
+func _steer_toward_target(delta: float) -> void:
+	if _homing_target == null or not is_instance_valid(_homing_target) \
+			or _homing_target.is_queued_for_deletion():
+		_homing_target = _find_homing_target()
+	if _homing_target == null:
+		return
+	var offset: Vector2 = _homing_target.global_position - global_position
+	var desired: Vector2 = offset.normalized()
+	if direction.dot(desired) < 0.0:
+		_homing_lost = true
+		return
+	var closeness: float = 1.0 - clampf(offset.length() / HOMING_RADIUS, 0.0, 1.0)
+	var max_turn: float = homing_turn_rate * (1.0 + HOMING_CLOSE_BOOST * closeness) * delta
+	direction = direction.rotated(clampf(direction.angle_to(desired), -max_turn, max_turn))
+	rotation = direction.angle()
+
+
+func _find_homing_target() -> EnemyBase:
+	var best: EnemyBase = null
+	var best_distance: float = HOMING_RADIUS * HOMING_RADIUS
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy: EnemyBase = node as EnemyBase
+		if enemy == null or enemy.is_queued_for_deletion():
+			continue
+		var offset: Vector2 = enemy.global_position - global_position
+		var distance: float = offset.length_squared()
+		if distance > best_distance or direction.dot(offset.normalized()) < HOMING_CONE:
+			continue
+		best = enemy
+		best_distance = distance
+	return best
 
 
 func _on_body_entered(body: Node2D) -> void:
@@ -67,11 +114,6 @@ func _on_body_entered(body: Node2D) -> void:
 func _finish_impact() -> void:
 	_has_impacted = true
 	queue_free()
-
-
-func _on_lifetime_expired() -> void:
-	if not _has_impacted and is_instance_valid(self):
-		queue_free()
 
 
 func _paint_impact(impact_position: Vector2) -> void:

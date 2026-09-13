@@ -15,6 +15,8 @@ const COUNT_OVER_COLOR: Color = Color(0.85, 0.2, 0.15)
 
 var in_run_target_index: int = MAIN_ABILITY_INDEX
 
+var _shot_picker: ShotPicker = null
+
 @onready var pixel_count_label: Label = $CenterContainer/MainContainer/EditorRow/SidePanel/PixelCountLabel
 
 
@@ -32,6 +34,10 @@ func _apply_translations() -> void:
 
 
 func _on_creator_ready() -> void:
+	_shot_picker = ShotPicker.new()
+	add_child(_shot_picker)
+	_shot_picker.chosen.connect(_on_shot_chosen)
+	_shot_picker.dismissed.connect(_on_shot_picker_dismissed)
 	if in_run_mode:
 		back_button.text = LocalizationManager.text(_back_button_key())
 	else:
@@ -41,6 +47,7 @@ func _on_creator_ready() -> void:
 
 func open_for_new_ability(index: int) -> void:
 	in_run_target_index = index
+	_shot_picker.close()
 	pixel_editor.clear_canvas()
 	_update_pixel_count()
 	_show_feedback("creator.draw_new_ability")
@@ -68,9 +75,40 @@ func _on_confirm_button_pressed() -> void:
 		_show_feedback("creator.ability_too_large", [count, max_ability_pixels])
 		return
 
-	var target_index: int = in_run_target_index if in_run_mode else MAIN_ABILITY_INDEX
+	if in_run_mode:
+		_shot_picker.open(_main_shot_type(), true)
+		return
+	_shot_picker.open(GameManager.get_ability_shot_type(MAIN_ABILITY_INDEX))
+
+
+func _main_shot_type() -> int:
+	var shot_type: int = GameManager.get_ability_shot_type(MAIN_ABILITY_INDEX)
+	return shot_type if shot_type >= 0 else AbilityData.ShotType.STANDARD
+
+
+func open_shot_picker() -> bool:
+	_on_confirm_button_pressed()
+	return _shot_picker.visible
+
+
+func get_shot_picker() -> ShotPicker:
+	return _shot_picker
+
+
+func _target_index() -> int:
+	return in_run_target_index if in_run_mode else MAIN_ABILITY_INDEX
+
+
+func _on_shot_picker_dismissed() -> void:
+	_show_feedback("creator.shot_needed")
+
+
+func _on_shot_chosen(shot_type: int) -> void:
+	_shot_picker.close()
+	var target_index: int = _target_index()
 
 	GameManager.set_ability_drawing(target_index, pixel_editor.get_image_copy())
+	GameManager.set_ability_shot_type(target_index, shot_type)
 	var saved: bool = GameManager.save_ability_drawing_to_disk(target_index)
 	if not saved:
 		push_warning("[AbilityCreator] A habilidade ficou apenas em memória (falha ao salvar em disco).")

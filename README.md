@@ -24,9 +24,14 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 - **WASD** or **arrow keys** — move
 - **Mouse** — aim
 - **Left mouse button** — shoot toward the cursor (hold it to keep firing)
+- Every ability has a **shot type**, picked in the ability editor: **Standard**
+  curves into enemies near the end of its flight, **Charge** grows while the
+  button is held and fires on release, and **Rapid** is weak but fast and
+  long-ranged
 - **Space** or **Shift** — dash, with a short moment of invulnerability that
   lets you pass through enemies
-- Every 5 waves, choose to **upgrade an ability** or **draw a new ability**
+- Every 5 waves, choose to **upgrade an ability** or **draw a new ability**;
+  a new ability keeps the shot type of your first one
 - Survive as many waves as you can
 
 ## Main features
@@ -36,6 +41,7 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 - Cumulative arena painting: enemy trails and projectile impacts
   permanently paint the canvas
 - Mouse aiming and a dash with invulnerability frames and its own cooldown
+- Three shot types per ability: homing standard, hold-to-charge and rapid fire
 - Endless waves with increasing difficulty and enemy variety
 - Progression every 5 waves: random upgrades or a new ability
 - English/Portuguese localization, switchable from the main menu
