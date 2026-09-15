@@ -13,7 +13,7 @@ const ZIGZAG_DEMO_DISTANCE: float = 560.0
 const ZIGZAG_DEMO_SECONDS: float = 3.2
 const PLAYER_DASH_DEMO_DELAY: float = 0.1
 const CROSSHAIR_PREVIEW_SCALE: int = 4
-const CHARGE_DEMO_HOLD: float = 1.3
+const CHARGE_DEMO_HOLD: float = 1.6
 const CHARGE_DEMO_FLIGHT: float = 0.12
 const HARNESS_INVULNERABILITY: float = 1.0e9
 

@@ -15,5 +15,9 @@ func set_pixel_icon(texture: Texture2D, overlay_color: Color) -> void:
 	cooldown_overlay.color = overlay_color
 
 
+func set_slot_size(side: float) -> void:
+	custom_minimum_size = Vector2(side, side)
+
+
 func set_cooldown_fraction(fraction: float) -> void:
 	cooldown_overlay.anchor_bottom = clampf(fraction, 0.0, 1.0)
