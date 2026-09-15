@@ -6,11 +6,15 @@ extends Node2D
 
 @export var opaque_fraction: float = 0.6
 
+const CRITICAL_COLOR: Color = Color(1.0, 0.9, 0.5, 1.0)
+
 @onready var label: Label = $Label
 
 
-func setup(amount: float) -> void:
+func setup(amount: float, critical: bool = false) -> void:
 	label.text = str(int(round(amount)))
+	if critical:
+		label.add_theme_color_override("font_color", CRITICAL_COLOR)
 	_start_animation()
 
 

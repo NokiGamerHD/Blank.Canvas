@@ -1,6 +1,8 @@
 class_name AbilityController
 extends Node
 
+signal overcharge_ticked(step: int)
+
 const PROJECTILE_SCENE: PackedScene = preload("res://scenes/abilities/projectile.tscn")
 
 const FAN_SPREAD_DEGREES: float = 12.0
@@ -28,6 +30,8 @@ var _charge_preview: Sprite2D = null
 var _preview_index: int = -1
 var _blink_clock: float = 0.0
 var _next_charge_slot: int = 0
+
+var perks: Array[String] = []
 
 
 func _ready() -> void:
@@ -61,8 +65,10 @@ func _physics_process(delta: float) -> void:
 	var aim_direction: Vector2 = _aim_direction()
 	var chargers: Array[AbilityData] = []
 
+	var rate_multiplier: float = _fire_rate_multiplier()
+
 	for data in abilities:
-		data.cooldown_remaining = maxf(data.cooldown_remaining - delta, 0.0)
+		data.cooldown_remaining = maxf(data.cooldown_remaining - delta * rate_multiplier, 0.0)
 		if data.shot_type == AbilityData.ShotType.CHARGE:
 			chargers.append(data)
 			continue
@@ -96,13 +102,25 @@ func _process_chargers(chargers: Array[AbilityData], holding: bool, aim_directio
 		active.charge_elapsed = minf(active.charge_elapsed + delta, active.charge_time)
 		if not was_full and active.is_fully_charged():
 			AudioManager.play_charge_ready()
+		elif was_full and has_perk("overcharge"):
+			var previous_step: int = _overcharge_step(active.overcharge_elapsed)
+			active.overcharge_elapsed = minf(active.overcharge_elapsed + delta, ShotPerks.OVERCHARGE_TIME)
+			var step: int = _overcharge_step(active.overcharge_elapsed)
+			if step > previous_step:
+				AudioManager.play_overcharge_tick()
+				overcharge_ticked.emit(step)
 		return
 
 	_fire_ability(active, aim_direction)
 	active.charging = false
 	active.charge_elapsed = 0.0
+	active.overcharge_elapsed = 0.0
 	active.cooldown_remaining = active.cooldown
 	_next_charge_slot = (chargers.find(active) + 1) % chargers.size()
+
+
+func _overcharge_step(elapsed: float) -> int:
+	return floori(elapsed / ShotPerks.OVERCHARGE_TICK_INTERVAL + 0.0001)
 
 
 func _next_ready_charger(chargers: Array[AbilityData]) -> AbilityData:
@@ -111,6 +129,26 @@ func _next_ready_charger(chargers: Array[AbilityData]) -> AbilityData:
 		if data.cooldown_remaining <= 0.0:
 			return data
 	return null
+
+
+func has_perk(perk_id: String) -> bool:
+	return perks.has(perk_id)
+
+
+func add_perk(perk_id: String) -> bool:
+	if not ShotPerks.PERKS.has(perk_id):
+		push_warning("[AbilityController] Buff especial desconhecido: %s." % perk_id)
+		return false
+	if perks.has(perk_id):
+		return false
+	perks.append(perk_id)
+	return true
+
+
+func _fire_rate_multiplier() -> float:
+	if has_perk("momentum") and _player.is_moving():
+		return 1.0 + ShotPerks.MOMENTUM_RATE_BONUS
+	return 1.0
 
 
 func _on_player_died() -> void:
@@ -188,6 +226,15 @@ func _fire_ability(data: AbilityData, base_direction: Vector2) -> void:
 		projectile.size_scale = data.shot_size()
 		projectile.max_distance = data.shot_range
 		projectile.homing_turn_rate = data.homing_turn_rate
+		projectile.perks = perks
+		projectile.fully_charged = data.shot_type == AbilityData.ShotType.CHARGE and data.is_fully_charged()
+		if has_perk("ricochet"):
+			projectile.ricochets_remaining = ShotPerks.ricochet_bounces(data.piercing)
+		if has_perk("shards"):
+			projectile.shard_count = ShotPerks.shard_count(count)
+		if has_perk("critical") and randf() < ShotPerks.critical_chance(data.projectile_speed / projectile_speed):
+			projectile.damage *= ShotPerks.CRIT_MULTIPLIER
+			projectile.is_critical = true
 		projectile.position = _player.global_position + fire_direction * spawn_offset
 
 		var container: Node = get_tree().get_first_node_in_group("projectiles_container")

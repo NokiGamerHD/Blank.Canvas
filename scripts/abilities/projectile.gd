@@ -7,6 +7,8 @@ const HOMING_START_FRACTION: float = 0.4
 const HOMING_RADIUS: float = 260.0
 const HOMING_CONE: float = 0.25
 const HOMING_CLOSE_BOOST: float = 2.5
+const PROJECTILE_SCENE_PATH: String = "res://scenes/abilities/projectile.tscn"
+const BLAST_PAINT_FRACTION: float = 0.45
 
 @export var speed: float = 600.0
 
@@ -24,10 +26,22 @@ var size_scale: float = 1.0
 
 var homing_turn_rate: float = 0.0
 
+var perks: Array[String] = []
+
+var fully_charged: bool = false
+
+var ricochets_remaining: int = 0
+
+var shard_count: int = 0
+
+var is_critical: bool = false
+
 var _has_impacted: bool = false
 var _travelled: float = 0.0
 var _homing_target: EnemyBase = null
 var _homing_lost: bool = false
+var _last_hit: Node = null
+var _burst_done: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -100,15 +114,110 @@ func _on_body_entered(body: Node2D) -> void:
 	if _has_impacted:
 		return
 	if body is EnemyBase:
-		body.take_damage(damage)
+		var enemy: EnemyBase = body
+		if enemy == _last_hit:
+			return
+		_last_hit = enemy
+		var enemy_max_hp: float = enemy.max_hp
+		var dealt: float = _damage_against(enemy)
+		enemy.take_damage(dealt, true, is_critical)
+		if is_critical:
+			AudioManager.play_critical_hit()
+		_apply_hit_perks(enemy, dealt, enemy_max_hp)
 		_paint_impact(global_position)
 		if pierce_remaining > 0:
 			pierce_remaining -= 1
+			return
+		if ricochets_remaining > 0 and _ricochet_from(enemy):
 			return
 		_finish_impact()
 		return
 	_paint_impact(global_position)
 	_finish_impact()
+
+
+func ignore_body(body: Node) -> void:
+	_last_hit = body
+
+
+func _damage_against(enemy: EnemyBase) -> float:
+	var amount: float = damage
+	if perks.has("focus"):
+		amount *= 1.0 + ShotPerks.FOCUS_BONUS_PER_STACK * enemy.focus_stacks()
+		enemy.add_focus_stack()
+	return amount
+
+
+func _apply_hit_perks(enemy: EnemyBase, dealt: float, enemy_max_hp: float) -> void:
+	if perks.has("vampirism"):
+		var player: Player = get_tree().get_first_node_in_group("player") as Player
+		if player != null:
+			player.heal(minf(dealt, enemy_max_hp * ShotPerks.VAMPIRISM_FRACTION))
+	if perks.has("poison"):
+		enemy.add_poison(damage * ShotPerks.POISON_DPS_FRACTION)
+	if _burst_done:
+		return
+	_burst_done = true
+	if perks.has("explosion") and fully_charged:
+		_blast(enemy)
+	if shard_count > 0:
+		_spawn_shards(enemy)
+
+
+func _blast(center: EnemyBase) -> void:
+	var radius: float = ShotPerks.blast_radius(size_scale)
+	var radius_squared: float = radius * radius
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy: EnemyBase = node as EnemyBase
+		if enemy == null or enemy == center or enemy.is_queued_for_deletion():
+			continue
+		if enemy.global_position.distance_squared_to(global_position) <= radius_squared:
+			enemy.take_damage(damage * ShotPerks.BLAST_DAMAGE_FRACTION, false)
+	var canvas: PaintCanvas = get_tree().get_first_node_in_group("paint_canvas") as PaintCanvas
+	if canvas != null:
+		canvas.paint_circle(global_position, radius * BLAST_PAINT_FRACTION, _get_paint_color())
+	AudioManager.play_enemy_explode()
+
+
+func _spawn_shards(center: EnemyBase) -> void:
+	var scene: PackedScene = load(PROJECTILE_SCENE_PATH)
+	var container: Node = get_parent()
+	if scene == null or container == null:
+		push_warning("[Projectile] Não foi possível soltar os estilhaços.")
+		return
+	var start_angle: float = randf() * TAU
+	for index in shard_count:
+		var shard: Projectile = scene.instantiate()
+		shard.configure(sprite.texture, Vector2.from_angle(start_angle + TAU * float(index) / float(shard_count)))
+		shard.damage = damage * ShotPerks.SHARD_DAMAGE_FRACTION
+		shard.speed = speed
+		shard.size_scale = ShotPerks.SHARD_SIZE
+		shard.max_distance = ShotPerks.SHARD_RANGE
+		shard.ignore_body(center)
+		shard.position = global_position
+		container.add_child.call_deferred(shard)
+
+
+func _ricochet_from(enemy: EnemyBase) -> bool:
+	var next: EnemyBase = null
+	var best_distance: float = ShotPerks.RICOCHET_RANGE * ShotPerks.RICOCHET_RANGE
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var candidate: EnemyBase = node as EnemyBase
+		if candidate == null or candidate == enemy or candidate.is_queued_for_deletion():
+			continue
+		var distance: float = candidate.global_position.distance_squared_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			next = candidate
+	if next == null:
+		return false
+	ricochets_remaining -= 1
+	direction = (next.global_position - global_position).normalized()
+	rotation = direction.angle()
+	_travelled = maxf(max_distance - ShotPerks.RICOCHET_RANGE * 1.2, 0.0)
+	_homing_target = next
+	_homing_lost = false
+	return true
 
 
 func _finish_impact() -> void:

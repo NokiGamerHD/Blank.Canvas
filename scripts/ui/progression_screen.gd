@@ -25,6 +25,17 @@ const MAX_PROJECTILE_COUNT: int = 9
 const MAX_SIZE_SCALE: float = 3.0
 const MAX_PIERCING: int = 8
 const MIN_COOLDOWN: float = 0.15
+const PERK_PREFIX: String = "perk:"
+const OPTION_COUNT: int = 3
+const PERK_FACE_COLOR: Color = Color(1.0, 0.9, 0.62, 1.0)
+const PERK_HOVER_COLOR: Color = Color(0.96, 0.82, 0.48, 1.0)
+const PERK_BORDER_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
+const PERK_BUTTON_HEIGHT: float = 46.0
+const PERK_LINE_SPACING: int = 5
+const PERK_NAME_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
+const PERK_INFO_COLOR: Color = Color(0.3, 0.3, 0.3, 1.0)
+const PERK_NAME_FONT_SIZE: int = 9
+const PERK_INFO_FONT_SIZE: int = 8
 
 @onready var title_label: Label = $Dim/CenterContainer/Panel/Content/TitleLabel
 @onready var choice_page: VBoxContainer = $Dim/CenterContainer/Panel/Content/ChoicePage
@@ -40,6 +51,7 @@ const MIN_COOLDOWN: float = 0.15
 
 var _abilities: Array[AbilityData] = []
 var _player: Player = null
+var _controller: AbilityController = null
 var _current_wave: int = 5
 
 
@@ -55,6 +67,7 @@ func _ready() -> void:
 func open(wave: int, abilities: Array[AbilityData], player: Player = null) -> void:
 	_abilities = abilities
 	_player = player
+	_controller = player.get_node_or_null("AbilityController") as AbilityController if player != null else null
 	_current_wave = wave
 	title_label.text = LocalizationManager.text("progression.wave_complete", [_current_wave])
 	_show_choice_page()
@@ -97,27 +110,80 @@ func _build_upgrade_options() -> void:
 	for child in upgrade_options.get_children():
 		child.queue_free()
 
-	var pool: Array[Dictionary] = []
+	var rest: Array[Dictionary] = []
 	for entry in UPGRADE_POOL:
 		if entry["global"] and _player == null:
 			continue
-		pool.append(entry)
-	pool.shuffle()
+		rest.append(entry)
 
-	for i in mini(3, pool.size()):
-		var entry: Dictionary = pool[i]
+	var perk_pool: Array[Dictionary] = _available_perk_entries()
+	perk_pool.shuffle()
+	var chosen: Array[Dictionary] = []
+	if not perk_pool.is_empty():
+		chosen.append(perk_pool.pop_back())
+	rest.append_array(perk_pool)
+	rest.shuffle()
+	while chosen.size() < OPTION_COUNT and not rest.is_empty():
+		chosen.append(rest.pop_back())
+	chosen.shuffle()
+
+	for entry in chosen:
 		var target: AbilityData = _abilities.pick_random()
-
-		var label: String = LocalizationManager.text(entry["text_key"])
-		if _abilities.size() > 1 and not entry["global"]:
-			label = "%s: %s" % [target.display_name(), label]
-
 		var button: Button = Button.new()
-		button.text = label
 		button.custom_minimum_size = Vector2(300, 30)
 		button.add_theme_font_size_override("font_size", 9)
+		button.set_meta("upgrade_id", entry["id"])
+		if entry.has("perk"):
+			button.custom_minimum_size = Vector2(300, PERK_BUTTON_HEIGHT)
+			var lines: VBoxContainer = VBoxContainer.new()
+			lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			lines.alignment = BoxContainer.ALIGNMENT_CENTER
+			lines.add_theme_constant_override("separation", PERK_LINE_SPACING)
+			lines.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			button.add_child(lines)
+			lines.add_child(_perk_label(
+				LocalizationManager.text(ShotPerks.name_key(entry["perk"])), PERK_NAME_FONT_SIZE, PERK_NAME_COLOR))
+			lines.add_child(_perk_label(
+				LocalizationManager.text(ShotPerks.info_key(entry["perk"])), PERK_INFO_FONT_SIZE, PERK_INFO_COLOR))
+			button.add_theme_stylebox_override("normal", _perk_style(PERK_FACE_COLOR))
+			button.add_theme_stylebox_override("hover", _perk_style(PERK_HOVER_COLOR))
+			button.add_theme_stylebox_override("pressed", _perk_style(PERK_HOVER_COLOR))
+		else:
+			var label: String = LocalizationManager.text(entry["text_key"])
+			if _abilities.size() > 1 and not entry["global"]:
+				label = "%s: %s" % [target.display_name(), label]
+			button.text = label
 		button.pressed.connect(_on_upgrade_option_pressed.bind(entry["id"], target))
 		upgrade_options.add_child(button)
+
+
+func _available_perk_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if _controller == null or _abilities.is_empty():
+		return entries
+	for perk_id in ShotPerks.perks_for(_abilities[0].shot_type):
+		if _controller.has_perk(perk_id):
+			continue
+		entries.append({"id": PERK_PREFIX + perk_id, "perk": perk_id, "global": true})
+	return entries
+
+
+func _perk_label(text: String, font_size: int, color: Color) -> Label:
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.text = text
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	return label
+
+
+func _perk_style(face_color: Color) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = face_color
+	style.border_color = PERK_BORDER_COLOR
+	style.set_border_width_all(3)
+	return style
 
 
 func _on_upgrade_option_pressed(upgrade_id: String, target: AbilityData) -> void:
@@ -126,6 +192,12 @@ func _on_upgrade_option_pressed(upgrade_id: String, target: AbilityData) -> void
 
 
 func _apply_upgrade(upgrade_id: String, data: AbilityData) -> void:
+	if upgrade_id.begins_with(PERK_PREFIX):
+		if _controller == null:
+			push_warning("[ProgressionScreen] Buff especial sem controlador; ignorado.")
+			return
+		_controller.add_perk(upgrade_id.trim_prefix(PERK_PREFIX))
+		return
 	match upgrade_id:
 		"damage":
 			data.damage *= DAMAGE_MULTIPLIER

@@ -81,6 +81,21 @@ const SHEET_CELL_SIZE: int = 256
 const PAINT_SPACING: float = 6.0
 
 const DEATH_ANIM_DURATION: float = 0.15
+const POISON_TINT: Color = Color(0.78, 0.6, 1.0, 1.0)
+const POISON_TRAIL_COLOR: Color = Color(0.56, 0.3, 0.82, 0.9)
+const POISON_TRAIL_RADIUS: float = 4.0
+const POISON_PUFF_COLOR: Color = Color(0.6, 0.32, 0.9, 0.95)
+const POISON_PUFF_INTERVAL: float = 0.28
+const POISON_PUFF_SCALE: int = 3
+const POISON_PUFF_RISE: float = 20.0
+const POISON_PUFF_TIME: float = 0.5
+const POISON_PUFF_SPREAD: float = 0.6
+const POISON_PUFF_PATTERN: Array[String] = [
+	".##.",
+	"####",
+	"####",
+	".##.",
+]
 
 const DASH_ALPHA: float = 0.6
 const DASH_BRAKE: float = 2400.0
@@ -159,6 +174,15 @@ var _player: Player = null
 var _paint_canvas: PaintCanvas = null
 var _last_paint_position: Vector2 = Vector2.ZERO
 var _arena_bounds: Rect2 = Rect2()
+var _poison_stacks: int = 0
+var _poison_dps: float = 0.0
+var _poison_time_left: float = 0.0
+var _poison_tick: float = 0.0
+var _focus_stacks: int = 0
+var _focus_timer: float = 0.0
+var _poison_puff_timer: float = 0.0
+
+static var _poison_puff_texture: ImageTexture = null
 
 static var _scene_cache: PackedScene = null
 
@@ -483,6 +507,8 @@ func _paint_trail() -> void:
 	if global_position.distance_to(_last_paint_position) < PAINT_SPACING:
 		return
 	canvas.paint_line(_last_paint_position, global_position, trail_radius, trail_color)
+	if _poison_stacks > 0:
+		canvas.paint_line(_last_paint_position, global_position, POISON_TRAIL_RADIUS, POISON_TRAIL_COLOR)
 	_last_paint_position = global_position
 
 
@@ -506,18 +532,100 @@ func apply_wave_scaling(hp_multiplier: float) -> void:
 	current_hp = max_hp
 
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, play_sound: bool = true, critical: bool = false) -> void:
 	if _is_dying:
 		return
 	current_hp -= amount
 	_flash_damage()
-	_spawn_damage_number(amount)
-	AudioManager.play_hit()
+	_spawn_damage_number(amount, critical)
+	if play_sound:
+		AudioManager.play_hit()
 	if current_hp <= 0.0:
 		_die()
 		return
 	if split_generations > 0 and generation < split_generations:
 		_split()
+
+
+func _process(delta: float) -> void:
+	if _focus_timer > 0.0:
+		_focus_timer -= delta
+		if _focus_timer <= 0.0:
+			_focus_stacks = 0
+	if _poison_stacks <= 0 or _is_dying:
+		return
+	_poison_time_left -= delta
+	_poison_tick -= delta
+	_poison_puff_timer -= delta
+	if _poison_puff_timer <= 0.0:
+		_poison_puff_timer = POISON_PUFF_INTERVAL
+		_spawn_poison_puff()
+	if _poison_tick <= 0.0:
+		_poison_tick += ShotPerks.POISON_TICK
+		take_damage(_poison_stacks * _poison_dps * ShotPerks.POISON_TICK, false)
+	if _poison_time_left <= 0.0 and not _is_dying:
+		_poison_stacks = 0
+		sprite.self_modulate = Color.WHITE
+
+
+func add_poison(damage_per_second: float) -> void:
+	if _is_dying or damage_per_second <= 0.0:
+		return
+	if _poison_stacks == 0:
+		_poison_tick = ShotPerks.POISON_TICK
+	_poison_stacks = mini(_poison_stacks + 1, ShotPerks.POISON_MAX_STACKS)
+	_poison_dps = maxf(_poison_dps, damage_per_second)
+	_poison_time_left = ShotPerks.POISON_DURATION
+	sprite.self_modulate = POISON_TINT
+
+
+func _spawn_poison_puff() -> void:
+	var container: Node = get_tree().get_first_node_in_group("effects_container")
+	if container == null:
+		return
+	var puff: Sprite2D = Sprite2D.new()
+	puff.texture = _get_poison_puff_texture()
+	puff.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	puff.set_meta("poison_puff", true)
+	var spread: float = collision_radius * POISON_PUFF_SPREAD
+	puff.position = global_position + Vector2(randf_range(-spread, spread), randf_range(-spread, 0.0))
+	container.add_child(puff)
+
+	var tween: Tween = puff.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(puff, "position:y", puff.position.y - POISON_PUFF_RISE, POISON_PUFF_TIME)
+	tween.tween_property(puff, "modulate:a", 0.0, POISON_PUFF_TIME)
+	tween.finished.connect(puff.queue_free)
+
+
+static func _get_poison_puff_texture() -> ImageTexture:
+	if _poison_puff_texture != null:
+		return _poison_puff_texture
+	var height: int = POISON_PUFF_PATTERN.size()
+	var width: int = POISON_PUFF_PATTERN[0].length()
+	var image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in height:
+		var row: String = POISON_PUFF_PATTERN[y]
+		for x in mini(width, row.length()):
+			if row[x] == "#":
+				image.set_pixel(x, y, POISON_PUFF_COLOR)
+	image.resize(width * POISON_PUFF_SCALE, height * POISON_PUFF_SCALE, Image.INTERPOLATE_NEAREST)
+	_poison_puff_texture = ImageTexture.create_from_image(image)
+	return _poison_puff_texture
+
+
+func poison_stacks() -> int:
+	return _poison_stacks
+
+
+func add_focus_stack() -> void:
+	_focus_stacks = mini(_focus_stacks + 1, ShotPerks.FOCUS_MAX_STACKS)
+	_focus_timer = ShotPerks.FOCUS_DECAY
+
+
+func focus_stacks() -> int:
+	return _focus_stacks
 
 
 func _flash_damage() -> void:
@@ -526,14 +634,14 @@ func _flash_damage() -> void:
 	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
 
 
-func _spawn_damage_number(amount: float) -> void:
+func _spawn_damage_number(amount: float, critical: bool = false) -> void:
 	var container: Node = get_tree().get_first_node_in_group("effects_container")
 	if container == null:
 		return
 	var number: DamageNumber = DAMAGE_NUMBER_SCENE.instantiate()
 	container.add_child(number)
 	number.global_position = global_position + Vector2(randf_range(-6.0, 6.0), -12.0)
-	number.setup(amount)
+	number.setup(amount, critical)
 
 
 func _split() -> void:
