@@ -172,7 +172,7 @@ func _charged_shot(hold_seconds: float) -> Dictionary:
 
 func _check_charge_growth() -> void:
 	var tap: Dictionary = await _charged_shot(0.2)
-	var full: Dictionary = await _charged_shot(1.4)
+	var full: Dictionary = await _charged_shot(1.7)
 	var long: Dictionary = await _charged_shot(3.0)
 	var max_damage: float = _controller.damage * AbilityData.CHARGE_MAX_DAMAGE
 	var passed: bool = tap["fired"] and full["fired"] and long["fired"] \
@@ -182,7 +182,7 @@ func _check_charge_growth() -> void:
 		and is_equal_approx(full["size"], AbilityData.CHARGE_MAX_SIZE) \
 		and full["pierce"] == AbilityData.CHARGE_FULL_PIERCE and tap["pierce"] == 0
 	_report("carregado cresce ao segurar, tem teto e so sai ao soltar", passed,
-		"toque=%.0fdano/%.2fx 1.4s=%.0f/%.2fx/perf%d 3s=%.0f/%.2fx disparos_segurando=%d" % [
+		"toque=%.0fdano/%.2fx 1.7s=%.0f/%.2fx/perf%d 3s=%.0f/%.2fx disparos_segurando=%d" % [
 			tap.get("damage", 0.0), tap.get("size", 0.0), full.get("damage", 0.0), full.get("size", 0.0),
 			full.get("pierce", -1), long.get("damage", 0.0), long.get("size", 0.0), long["held"]
 		])

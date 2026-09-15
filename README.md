@@ -42,6 +42,8 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   permanently paint the canvas
 - Mouse aiming and a dash with invulnerability frames and its own cooldown
 - Three shot types per ability: homing standard, hold-to-charge and rapid fire
+- A stats panel under the minimap with life, attack, fire rate and the other
+  numbers each upgrade changes
 - Endless waves with increasing difficulty and enemy variety
 - Progression every 5 waves: random upgrades or a new ability
 - English/Portuguese localization, switchable from the main menu

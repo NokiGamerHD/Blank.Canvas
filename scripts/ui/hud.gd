@@ -25,6 +25,12 @@ const DASH_COOLDOWN_OVERLAY: Color = Color(0.12, 0.12, 0.12, 0.45)
 const CONTROLS_HINT_SECONDS: float = 6.0
 const CONTROLS_HINT_FADE: float = 1.0
 const CONTROLS_HINT_BOTTOM_OFFSET: float = 66.0
+const STATS_PANEL_GAP: float = 8.0
+const ABILITY_SLOT_SIZE: float = 28.0
+const MIN_ABILITY_SLOT_SIZE: float = 8.0
+const ABILITY_BAR_SCREEN_MARGIN: float = 8.0
+const ABILITY_ROW_SEPARATION: int = 6
+const MIN_ABILITY_ROW_SEPARATION: int = 2
 
 @onready var hp_label: Label = $InfoPanel/InfoContainer/HPLabel
 @onready var wave_label: Label = $InfoPanel/InfoContainer/WaveLabel
@@ -38,6 +44,9 @@ var _ability_controller: AbilityController = null
 var _player: Player = null
 var _dash_slot: AbilitySlot = null
 var _controls_hint: Label = null
+var _stats_panel: StatsPanel = null
+var _dash_icon_large: ImageTexture = null
+var _dash_icon_small: ImageTexture = null
 var _slots: Array[AbilitySlot] = []
 var _tracked_ability_count: int = -1
 var _current_wave: int = 1
@@ -51,6 +60,7 @@ func _ready() -> void:
 	_count_timer = Timer.new()
 	_count_timer.wait_time = 0.2
 	_count_timer.timeout.connect(_refresh_enemy_count)
+	_count_timer.timeout.connect(_refresh_stats)
 	add_child(_count_timer)
 	_count_timer.start()
 	_refresh_enemy_count()
@@ -94,15 +104,19 @@ func setup_abilities(controller: AbilityController) -> void:
 
 func setup_player(player: Player) -> void:
 	_player = player
+	_build_stats_panel()
 	if _dash_slot != null:
 		return
+	_dash_icon_large = _build_dash_icon(DASH_ICON_SCALE)
+	_dash_icon_small = _build_dash_icon(1)
 	_dash_slot = AbilitySlotScene.instantiate()
 	abilities_row.add_child(_dash_slot)
 	abilities_row.move_child(_dash_slot, 0)
-	_dash_slot.set_pixel_icon(_build_dash_icon(), DASH_COOLDOWN_OVERLAY)
+	_dash_slot.set_pixel_icon(_dash_icon_large, DASH_COOLDOWN_OVERLAY)
+	_fit_ability_bar()
 
 
-func _build_dash_icon() -> ImageTexture:
+func _build_dash_icon(icon_scale: int) -> ImageTexture:
 	var height: int = DASH_ICON_PATTERN.size()
 	var width: int = DASH_ICON_PATTERN[0].length()
 	var image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
@@ -114,7 +128,7 @@ func _build_dash_icon() -> ImageTexture:
 				image.set_pixel(x, y, DASH_ICON_COLOR)
 			elif _touches_ink(x, y):
 				image.set_pixel(x, y, DASH_ICON_OUTLINE)
-	image.resize(width * DASH_ICON_SCALE, height * DASH_ICON_SCALE, Image.INTERPOLATE_NEAREST)
+	image.resize(width * icon_scale, height * icon_scale, Image.INTERPOLATE_NEAREST)
 	return ImageTexture.create_from_image(image)
 
 
@@ -168,6 +182,46 @@ func _rebuild_ability_slots(abilities: Array[AbilityData]) -> void:
 		_slots.append(slot)
 
 	_tracked_ability_count = abilities.size()
+	_fit_ability_bar()
+
+
+func _fit_ability_bar() -> void:
+	var slots: Array[AbilitySlot] = []
+	if _dash_slot != null:
+		slots.append(_dash_slot)
+	slots.append_array(_slots)
+	if slots.is_empty():
+		return
+
+	var count: int = slots.size()
+	var bar_panel: Control = abilities_row.get_parent() as Control
+	var chrome: float = 0.0
+	var style: StyleBox = bar_panel.get_theme_stylebox("panel")
+	if style != null:
+		chrome = style.get_minimum_size().x
+	var available: float = get_viewport().get_visible_rect().size.x - ABILITY_BAR_SCREEN_MARGIN * 2.0 - chrome
+
+	var separation: int = ABILITY_ROW_SEPARATION
+	var side: float = ABILITY_SLOT_SIZE
+	if count * side + (count - 1) * separation > available:
+		separation = MIN_ABILITY_ROW_SEPARATION
+		side = clampf(floorf((available - (count - 1) * separation) / count), MIN_ABILITY_SLOT_SIZE, ABILITY_SLOT_SIZE)
+	abilities_row.add_theme_constant_override("separation", separation)
+	for slot in slots:
+		slot.set_slot_size(side)
+
+	if _dash_slot == null or _dash_icon_large == null:
+		return
+	var dash_icon: ImageTexture = _dash_icon_large if side >= _dash_icon_large.get_width() else _dash_icon_small
+	_dash_slot.set_pixel_icon(dash_icon, DASH_COOLDOWN_OVERLAY)
+	if side < dash_icon.get_width():
+		_dash_slot.icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+
+
+func ability_slot_size() -> float:
+	if _dash_slot == null:
+		return 0.0
+	return _dash_slot.custom_minimum_size.x
 
 
 func _refresh_enemy_count() -> void:
@@ -181,3 +235,30 @@ func _apply_translations() -> void:
 	enemies_label.text = LocalizationManager.text("hud.enemies", [_alive_enemies])
 	if _controls_hint != null:
 		_controls_hint.text = LocalizationManager.text("hud.controls_hint")
+
+
+func get_stats_panel() -> StatsPanel:
+	return _stats_panel
+
+
+func _build_stats_panel() -> void:
+	if _stats_panel != null:
+		_stats_panel.setup(_player, _ability_controller)
+		return
+	var minimap_panel: Control = get_node("MinimapPanel")
+	_stats_panel = StatsPanel.new()
+	_stats_panel.anchor_left = minimap_panel.anchor_left
+	_stats_panel.anchor_right = minimap_panel.anchor_right
+	_stats_panel.offset_left = minimap_panel.offset_left
+	_stats_panel.offset_right = minimap_panel.offset_right
+	_stats_panel.offset_top = minimap_panel.offset_bottom + STATS_PANEL_GAP
+	_stats_panel.offset_bottom = _stats_panel.offset_top
+	_stats_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	add_child(_stats_panel)
+	move_child(_stats_panel, enemy_indicators.get_index())
+	_stats_panel.setup(_player, _ability_controller)
+
+
+func _refresh_stats() -> void:
+	if _stats_panel != null:
+		_stats_panel.refresh()

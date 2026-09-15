@@ -18,10 +18,10 @@ const SHOT_PRESETS: Dictionary = {
 	},
 }
 
-const CHARGE_TIME: float = 1.1
+const CHARGE_TIME: float = 1.3
 const MIN_CHARGE_TIME: float = 0.35
 const CHARGE_MIN_DAMAGE: float = 0.5
-const CHARGE_MAX_DAMAGE: float = 2.6
+const CHARGE_MAX_DAMAGE: float = 2.1
 const CHARGE_MAX_SIZE: float = 2.2
 const CHARGE_FULL_PIERCE: int = 2
 

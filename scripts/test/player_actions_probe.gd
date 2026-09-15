@@ -39,6 +39,8 @@ func _ready() -> void:
 	await _check_click_fires()
 	_check_stronger_upgrades()
 	_check_dash_upgrade_needs_player()
+	await _check_stats_panel()
+	await _check_ability_bar_fits()
 
 	print("falhas: %d" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -270,3 +272,90 @@ func _check_dash_upgrade_needs_player() -> void:
 						seen_without_player = true
 	_report("dash so aparece no sorteio com jogador", seen_with_player and not seen_without_player,
 		"com_jogador=%s sem_jogador=%s" % [seen_with_player, seen_without_player])
+
+
+func _check_stats_panel() -> void:
+	var panel: StatsPanel = _arena.hud.get_stats_panel()
+	if panel == null:
+		_report("painel de status existe e acompanha o jogo", false, "painel=null")
+		return
+	var minimap_panel: Control = _arena.hud.get_node("MinimapPanel")
+	var saved_max: float = _player.max_hp
+	var saved_hp: float = _player.current_hp
+	_player.max_hp = 100.0
+	_player.current_hp = 73.0
+	var data: AbilityData = _controller.get_abilities()[0]
+	data.apply_shot_type(AbilityData.ShotType.STANDARD, _controller.damage, _controller.cooldown, _controller.projectile_speed)
+	panel.refresh()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var below_minimap: bool = panel.get_global_rect().position.y >= minimap_panel.get_global_rect().end.y
+	var life: String = panel.value_text("life")
+	var damage_before: String = panel.value_text("damage")
+	var rate_before: float = panel.shots_per_second(_controller.get_abilities())
+	_arena.progression_screen._apply_upgrade("damage", data)
+	panel.refresh()
+	var damage_after_buff: String = panel.value_text("damage")
+
+	GameManager.set_ability_shot_type(7, AbilityData.ShotType.STANDARD)
+	_controller.add_ability(7)
+	panel.refresh()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var damage_two_abilities: String = panel.value_text("damage")
+	var rate_grew: bool = panel.shots_per_second(_controller.get_abilities()) > rate_before
+	var same_width: bool = panel.get_global_rect().size.x <= minimap_panel.get_global_rect().size.x + 0.5
+	_controller.abilities.resize(1)
+	GameManager.set_ability_shot_type(7, -1)
+
+	data.apply_shot_type(AbilityData.ShotType.CHARGE, _controller.damage, _controller.cooldown, _controller.projectile_speed)
+	panel.refresh()
+	var charge_damage: String = panel.value_text("damage")
+	var charge_pierce: String = panel.value_text("pierce")
+	data.apply_shot_type(AbilityData.ShotType.STANDARD, _controller.damage, _controller.cooldown, _controller.projectile_speed)
+	panel.refresh()
+
+	_player.max_hp = saved_max
+	_player.current_hp = saved_hp
+	var expected_charge: String = "%d-%d" % [
+		roundi(_controller.damage * AbilityData.CHARGE_MIN_DAMAGE),
+		roundi(_controller.damage * AbilityData.CHARGE_MAX_DAMAGE),
+	]
+	_report("painel de status geral, do tamanho do minimapa, sobe com buff e habilidade",
+		below_minimap and same_width and life == "73/100" and damage_before == "20" \
+			and damage_after_buff == "30" and damage_two_abilities == "50" and rate_grew \
+			and charge_damage == expected_charge and charge_pierce == "0-2",
+		"embaixo=%s largura_ok=%s vida=%s dano=%s->%s->%s ritmo_subiu=%s carregado=%s fura=%s" % [
+			below_minimap, same_width, life, damage_before, damage_after_buff, damage_two_abilities,
+			rate_grew, charge_damage, charge_pierce
+		])
+
+
+
+func _check_ability_bar_fits() -> void:
+	var bar: Control = _arena.hud.get_node("AbilitiesPanel")
+	var screen_width: float = get_viewport().get_visible_rect().size.x
+	var readings: Array[String] = []
+	var all_inside: bool = true
+	var sizes: Dictionary = {}
+	for target in [5, 18, 25, 40]:
+		while _controller.get_abilities().size() < target:
+			_controller.add_ability(_controller.get_abilities().size())
+		for i in 4:
+			await get_tree().process_frame
+		var rect: Rect2 = bar.get_global_rect()
+		var inside: bool = rect.position.x >= 0.0 and rect.end.x <= screen_width
+		all_inside = all_inside and inside
+		sizes[target] = _arena.hud.ability_slot_size()
+		readings.append("%d:%.0f-%.0f/slot%.0f" % [target, rect.position.x, rect.end.x, sizes[target]])
+
+	_controller.abilities.resize(1)
+	for i in 4:
+		await get_tree().process_frame
+	var restored: float = _arena.hud.ability_slot_size()
+
+	_report("barra de habilidades encolhe em vez de sair da tela",
+		all_inside and is_equal_approx(sizes[5], 28.0) and sizes[25] < 28.0 and sizes[40] < sizes[25] \
+			and is_equal_approx(restored, 28.0),
+		"%s volta_com_1=%.0f tela=%.0f" % [" ".join(readings), restored, screen_width])
