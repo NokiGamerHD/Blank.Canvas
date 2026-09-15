@@ -11,7 +11,12 @@ const ENEMY_DASH_SOUND: AudioStream = preload("res://assets/audio/enemy_dash.wav
 const ENEMY_EXPLODE_SOUND: AudioStream = preload("res://assets/audio/enemy_explode.wav")
 const PLAYER_DASH_SOUND: AudioStream = preload("res://assets/audio/player_dash.wav")
 const CHARGE_READY_SOUND: AudioStream = preload("res://assets/audio/charge_ready.wav")
+const CRITICAL_HIT_SOUND: AudioStream = preload("res://assets/audio/critical_hit.wav")
+const OVERCHARGE_TICK_SOUND: AudioStream = preload("res://assets/audio/overcharge_tick.wav")
 const SHOOT_MIN_GAP: float = 0.05
+const HIT_MIN_GAP: float = 0.05
+const ENEMY_DEATH_MIN_GAP: float = 0.06
+const CRITICAL_HIT_MIN_GAP: float = 0.08
 const ENEMY_DASH_MIN_GAP: float = 0.09
 const ENEMY_EXPLODE_MIN_GAP: float = 0.11
 const WARM_UP_VOLUME_DB: float = -80.0
@@ -78,11 +83,11 @@ func play_click() -> void:
 
 
 func play_hit() -> void:
-	_play(HIT_SOUND)
+	_play_spaced(HIT_SOUND, HIT_MIN_GAP)
 
 
 func play_enemy_death() -> void:
-	_play(ENEMY_DEATH_SOUND)
+	_play_spaced(ENEMY_DEATH_SOUND, ENEMY_DEATH_MIN_GAP)
 
 
 func play_player_hurt() -> void:
@@ -107,6 +112,14 @@ func play_player_dash() -> void:
 
 func play_charge_ready() -> void:
 	_play(CHARGE_READY_SOUND)
+
+
+func play_critical_hit() -> void:
+	_play_spaced(CRITICAL_HIT_SOUND, CRITICAL_HIT_MIN_GAP)
+
+
+func play_overcharge_tick() -> void:
+	_play(OVERCHARGE_TICK_SOUND)
 
 
 func is_audible() -> bool:

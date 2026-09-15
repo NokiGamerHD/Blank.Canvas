@@ -49,6 +49,7 @@ const CHARGE_FULL_PIERCE: int = 2
 
 var cooldown_remaining: float = 0.0
 var charge_elapsed: float = 0.0
+var overcharge_elapsed: float = 0.0
 var charging: bool = false
 
 
@@ -80,7 +81,9 @@ func is_fully_charged() -> bool:
 func shot_damage() -> float:
 	if shot_type != ShotType.CHARGE:
 		return damage
-	return damage * lerpf(CHARGE_MIN_DAMAGE, CHARGE_MAX_DAMAGE, charge_fraction())
+	var overcharge: float = clampf(overcharge_elapsed / ShotPerks.OVERCHARGE_TIME, 0.0, 1.0)
+	return damage * lerpf(CHARGE_MIN_DAMAGE, CHARGE_MAX_DAMAGE, charge_fraction()) \
+		* (1.0 + ShotPerks.OVERCHARGE_BONUS * overcharge)
 
 
 func shot_size() -> float:

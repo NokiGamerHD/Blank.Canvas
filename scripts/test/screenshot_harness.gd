@@ -15,6 +15,10 @@ const PLAYER_DASH_DEMO_DELAY: float = 0.1
 const CROSSHAIR_PREVIEW_SCALE: int = 4
 const CHARGE_DEMO_HOLD: float = 1.6
 const CHARGE_DEMO_FLIGHT: float = 0.12
+const CRITICAL_DEMO_DELAY: float = 0.2
+const POISON_DEMO_DISTANCE: float = 230.0
+const POISON_DEMO_SECONDS: float = 1.4
+const POISON_DEMO_DPS: float = 2.45
 const HARNESS_INVULNERABILITY: float = 1.0e9
 
 @export var arena_seconds: float = 8.0
@@ -351,6 +355,49 @@ func _capture_charge_demo(arena: Arena) -> void:
 	await get_tree().create_timer(CHARGE_DEMO_FLIGHT).timeout
 	await _capture_immediately("24_disparo_carregado")
 	data.apply_shot_type(AbilityData.ShotType.STANDARD, controller.damage, controller.cooldown, controller.projectile_speed)
+	controller.perks.clear()
+	await _capture_poison_demo(arena)
+	await _capture_critical_number_demo(arena)
+
+
+func _capture_critical_number_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var enemy_scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	var projectile_scene: PackedScene = load("res://scenes/abilities/projectile.tscn")
+	for index in 2:
+		var enemy: EnemyBase = enemy_scene.instantiate()
+		enemy.enemy_type = EnemyBase.EnemyType.COMMON
+		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		enemy.position = arena.player.global_position + Vector2(-80.0 + 160.0 * index, -110.0)
+		arena.enemies_container.add_child(enemy)
+		enemy.set_physics_process(false)
+		enemy.current_hp = 100000.0
+		var projectile: Projectile = projectile_scene.instantiate()
+		projectile.configure(GameManager.get_ability_texture(0), Vector2.UP)
+		projectile.damage = arena.ability_controller.damage * (ShotPerks.CRIT_MULTIPLIER if index == 1 else 1.0)
+		projectile.is_critical = index == 1
+		projectile.position = enemy.position + Vector2(0.0, 70.0)
+		arena.projectiles_container.add_child(projectile)
+	await get_tree().create_timer(CRITICAL_DEMO_DELAY).timeout
+	await _capture_immediately("27_numero_critico")
+
+
+func _capture_poison_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	for index in 3:
+		var enemy: EnemyBase = scene.instantiate()
+		enemy.enemy_type = EnemyBase.EnemyType.COMMON
+		enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		enemy.position = arena.player.global_position + Vector2.from_angle(TAU * float(index) / 3.0 + 0.4) * POISON_DEMO_DISTANCE
+		arena.enemies_container.add_child(enemy)
+		enemy.dash_range = 0.0
+		enemy.current_hp = 100000.0
+		enemy.add_poison(POISON_DEMO_DPS)
+	await get_tree().create_timer(POISON_DEMO_SECONDS).timeout
+	await _capture("26_veneno_fumaca_e_rastro")
 
 
 func _keep_player_alive(arena: Arena) -> void:
