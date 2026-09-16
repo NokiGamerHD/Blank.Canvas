@@ -31,10 +31,14 @@ const MIN_ABILITY_SLOT_SIZE: float = 8.0
 const ABILITY_BAR_SCREEN_MARGIN: float = 8.0
 const ABILITY_ROW_SEPARATION: int = 6
 const MIN_ABILITY_ROW_SEPARATION: int = 2
+const INK_ROW_SEPARATION: int = 4
+const INK_FONT_SIZE: int = 10
+const INK_TEXT_COLOR: Color = Color(0.2, 0.2, 0.2, 1.0)
 
 @onready var hp_label: Label = $InfoPanel/InfoContainer/HPLabel
 @onready var wave_label: Label = $InfoPanel/InfoContainer/WaveLabel
 @onready var enemies_label: Label = $InfoPanel/InfoContainer/EnemiesLabel
+@onready var info_container: VBoxContainer = $InfoPanel/InfoContainer
 @onready var abilities_row: HBoxContainer = $AbilitiesPanel/AbilitiesRow
 @onready var minimap: Minimap = $MinimapPanel/Minimap
 @onready var enemy_indicators: EnemyIndicators = $EnemyIndicators
@@ -45,6 +49,7 @@ var _player: Player = null
 var _dash_slot: AbilitySlot = null
 var _controls_hint: Label = null
 var _stats_panel: StatsPanel = null
+var _ink_label: Label = null
 var _dash_icon_large: ImageTexture = null
 var _dash_icon_small: ImageTexture = null
 var _slots: Array[AbilitySlot] = []
@@ -105,6 +110,7 @@ func setup_abilities(controller: AbilityController) -> void:
 func setup_player(player: Player) -> void:
 	_player = player
 	_build_stats_panel()
+	_build_ink_row()
 	if _dash_slot != null:
 		return
 	_dash_icon_large = _build_dash_icon(DASH_ICON_SCALE)
@@ -114,6 +120,36 @@ func setup_player(player: Player) -> void:
 	abilities_row.move_child(_dash_slot, 0)
 	_dash_slot.set_pixel_icon(_dash_icon_large, DASH_COOLDOWN_OVERLAY)
 	_fit_ability_bar()
+
+
+func update_ink(total: int) -> void:
+	if _ink_label != null:
+		_ink_label.text = str(total)
+
+
+func ink_text() -> String:
+	return _ink_label.text if _ink_label != null else ""
+
+
+func _build_ink_row() -> void:
+	if _ink_label == null:
+		var row: HBoxContainer = HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", INK_ROW_SEPARATION)
+		_ink_label = Label.new()
+		_ink_label.add_theme_font_size_override("font_size", INK_FONT_SIZE)
+		_ink_label.add_theme_color_override("font_color", INK_TEXT_COLOR)
+		row.add_child(_ink_label)
+		var icon: TextureRect = TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.texture = PaintDrop.icon_texture(1)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		row.add_child(icon)
+		info_container.add_child(row)
+	if not _player.ink_changed.is_connected(update_ink):
+		_player.ink_changed.connect(update_ink)
+	update_ink(_player.ink)
 
 
 func _build_dash_icon(icon_scale: int) -> ImageTexture:

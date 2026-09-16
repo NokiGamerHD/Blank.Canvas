@@ -37,6 +37,19 @@ const PERK_INFO_COLOR: Color = Color(0.3, 0.3, 0.3, 1.0)
 const PERK_NAME_FONT_SIZE: int = 9
 const PERK_INFO_FONT_SIZE: int = 8
 
+const REROLL_BASE_PRICE: int = 3
+const REROLL_PRICE_STEP: int = 2
+const NEW_ABILITY_BASE_PRICE: int = 20
+const NEW_ABILITY_PRICE_STEP: int = 15
+const SHOP_TEXT_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
+const SHOP_PRICE_GAP: float = 8.0
+const SHOP_ICON_GAP: int = 3
+const SHOP_DISABLED_ALPHA: float = 0.4
+const NEW_ABILITY_FONT_SIZE: int = 10
+const REROLL_FONT_SIZE: int = 9
+const REROLL_BUTTON_SIZE: Vector2 = Vector2(300, 26)
+const INK_FONT_SIZE: int = 10
+
 @onready var title_label: Label = $Dim/CenterContainer/Panel/Content/TitleLabel
 @onready var choice_page: VBoxContainer = $Dim/CenterContainer/Panel/Content/ChoicePage
 @onready var upgrade_button: Button = $Dim/CenterContainer/Panel/Content/ChoicePage/UpgradeButton
@@ -53,10 +66,25 @@ var _abilities: Array[AbilityData] = []
 var _player: Player = null
 var _controller: AbilityController = null
 var _current_wave: int = 5
+var _rerolls: int = 0
+var _options_built: bool = false
+var _ink_label: Label = null
+var _new_ability_content: HBoxContainer = null
+var _new_ability_name: Label = null
+var _new_ability_price: Label = null
+var _reroll_button: Button = null
+var _reroll_content: HBoxContainer = null
+var _reroll_name: Label = null
+var _reroll_price: Label = null
 
 
 func _ready() -> void:
 	visible = false
+	_build_ink_display()
+	_new_ability_content = _add_price_content(new_ability_button, NEW_ABILITY_FONT_SIZE)
+	_new_ability_name = _new_ability_content.get_child(0) as Label
+	_new_ability_price = _new_ability_content.get_child(2) as Label
+	_build_reroll_button()
 	upgrade_button.pressed.connect(_on_upgrade_button_pressed)
 	new_ability_button.pressed.connect(_on_new_ability_button_pressed)
 	back_to_choice_button.pressed.connect(_show_choice_page)
@@ -69,8 +97,11 @@ func open(wave: int, abilities: Array[AbilityData], player: Player = null) -> vo
 	_player = player
 	_controller = player.get_node_or_null("AbilityController") as AbilityController if player != null else null
 	_current_wave = wave
+	_rerolls = 0
+	_options_built = false
 	title_label.text = LocalizationManager.text("progression.wave_complete", [_current_wave])
 	_show_choice_page()
+	_refresh_shop()
 	visible = true
 	get_tree().paused = true
 
@@ -78,6 +109,49 @@ func open(wave: int, abilities: Array[AbilityData], player: Player = null) -> vo
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+
+
+func return_to_shop() -> void:
+	visible = true
+	_show_choice_page()
+	_refresh_shop()
+
+
+func ink_owned() -> int:
+	return _player.ink if _player != null else 0
+
+
+func new_ability_price() -> int:
+	var owned: int = _controller.get_abilities().size() if _controller != null else _abilities.size()
+	return NEW_ABILITY_BASE_PRICE + NEW_ABILITY_PRICE_STEP * maxi(owned - 1, 0)
+
+
+func reroll_price() -> int:
+	return REROLL_BASE_PRICE + REROLL_PRICE_STEP * _rerolls
+
+
+func can_buy_new_ability() -> bool:
+	return _player != null and ink_owned() >= new_ability_price()
+
+
+func can_reroll() -> bool:
+	return _player != null and ink_owned() >= reroll_price()
+
+
+func pay_for_new_ability() -> bool:
+	if not can_buy_new_ability():
+		return false
+	return _player.spend_ink(new_ability_price())
+
+
+func reroll() -> bool:
+	if not can_reroll() or not _player.spend_ink(reroll_price()):
+		_refresh_shop()
+		return false
+	_rerolls += 1
+	_build_upgrade_options()
+	_refresh_shop()
+	return true
 
 
 func _show_choice_page() -> void:
@@ -90,20 +164,106 @@ func _apply_translations() -> void:
 	choice_subtitle.text = LocalizationManager.text("progression.choose_path")
 	upgrade_button.text = LocalizationManager.text("progression.upgrade_ability")
 	upgrade_info_label.text = LocalizationManager.text("progression.upgrade_info")
-	new_ability_button.text = LocalizationManager.text("progression.new_ability")
-	new_ability_info_label.text = LocalizationManager.text("progression.new_ability_info")
+	_new_ability_name.text = LocalizationManager.text("progression.new_ability")
+	_reroll_name.text = LocalizationManager.text("progression.reroll")
 	upgrade_subtitle.text = LocalizationManager.text("progression.choose_upgrade")
 	back_to_choice_button.text = LocalizationManager.text("progression.back")
+	_refresh_shop()
+
+
+func _refresh_shop() -> void:
+	var owned: int = ink_owned()
+	_ink_label.text = str(owned)
+
+	var ability_price: int = new_ability_price()
+	var can_buy: bool = can_buy_new_ability()
+	new_ability_button.disabled = not can_buy
+	_new_ability_price.text = str(ability_price)
+	_new_ability_content.modulate.a = 1.0 if can_buy else SHOP_DISABLED_ALPHA
+	if can_buy:
+		new_ability_info_label.text = LocalizationManager.text("progression.new_ability_info")
+	else:
+		new_ability_info_label.text = LocalizationManager.text("progression.need_ink", [ability_price - owned])
+
+	var rerollable: bool = can_reroll()
+	_reroll_button.disabled = not rerollable
+	_reroll_price.text = str(reroll_price())
+	_reroll_content.modulate.a = 1.0 if rerollable else SHOP_DISABLED_ALPHA
+
+
+func _build_ink_display() -> void:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", SHOP_ICON_GAP)
+	_ink_label = _shop_label(INK_FONT_SIZE)
+	row.add_child(_ink_label)
+	row.add_child(_drop_icon())
+	var content: Node = title_label.get_parent()
+	content.add_child(row)
+	content.move_child(row, title_label.get_index() + 1)
+
+
+func _build_reroll_button() -> void:
+	_reroll_button = Button.new()
+	_reroll_button.custom_minimum_size = REROLL_BUTTON_SIZE
+	upgrade_page.add_child(_reroll_button)
+	upgrade_page.move_child(_reroll_button, upgrade_options.get_index() + 1)
+	_reroll_content = _add_price_content(_reroll_button, REROLL_FONT_SIZE)
+	_reroll_name = _reroll_content.get_child(0) as Label
+	_reroll_price = _reroll_content.get_child(2) as Label
+	_reroll_button.pressed.connect(reroll)
+
+
+func _add_price_content(button: Button, font_size: int) -> HBoxContainer:
+	button.text = ""
+	var row: HBoxContainer = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", SHOP_ICON_GAP)
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	button.add_child(row)
+	row.add_child(_shop_label(font_size))
+	var gap: Control = Control.new()
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gap.custom_minimum_size = Vector2(SHOP_PRICE_GAP, 0)
+	row.add_child(gap)
+	row.add_child(_shop_label(font_size))
+	row.add_child(_drop_icon())
+	return row
+
+
+func _shop_label(font_size: int) -> Label:
+	var label: Label = Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", SHOP_TEXT_COLOR)
+	return label
+
+
+func _drop_icon() -> TextureRect:
+	var icon: TextureRect = TextureRect.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.texture = PaintDrop.icon_texture(1)
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	return icon
 
 
 func _on_new_ability_button_pressed() -> void:
+	if not can_buy_new_ability():
+		_refresh_shop()
+		return
 	new_ability_chosen.emit()
 
 
 func _on_upgrade_button_pressed() -> void:
-	_build_upgrade_options()
+	if not _options_built:
+		_build_upgrade_options()
 	choice_page.visible = false
 	upgrade_page.visible = true
+	_refresh_shop()
 
 
 func _build_upgrade_options() -> void:
@@ -155,6 +315,7 @@ func _build_upgrade_options() -> void:
 			button.text = label
 		button.pressed.connect(_on_upgrade_option_pressed.bind(entry["id"], target))
 		upgrade_options.add_child(button)
+	_options_built = true
 
 
 func _available_perk_entries() -> Array[Dictionary]:

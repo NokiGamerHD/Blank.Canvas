@@ -34,6 +34,8 @@ script = ExtResource("11_boardscript")
 [node name="PaintCanvas" type="Node2D" parent="."]
 script = ExtResource("2_canvas")
 
+[node name="Drops" type="Node2D" parent="." groups=["drops_container"]]
+
 [node name="Enemies" type="Node2D" parent="."]
 
 [node name="Player" parent="." instance=ExtResource("3_player")]

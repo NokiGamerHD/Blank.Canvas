@@ -48,7 +48,9 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 - A stats panel under the minimap with life, attack, fire rate and the other
   numbers each upgrade changes
 - Endless waves with increasing difficulty and enemy variety
-- Progression every 5 waves: random upgrades or a new ability
+- Enemies drop paint drops in their own ink color, collected by walking close
+- Progression every 5 waves: random upgrades, rerolls paid in paint drops and
+  new abilities bought with them
 - English/Portuguese localization, switchable from the main menu
 - Save the finished painted canvas as an image at the end of a run
 
