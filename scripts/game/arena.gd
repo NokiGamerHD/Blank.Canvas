@@ -35,6 +35,7 @@ const CROSSHAIR_OUTLINE: Color = Color(1.0, 1.0, 1.0, 1.0)
 @onready var boundaries: StaticBody2D = $Boundaries
 @onready var board_canvas: BoardCanvas = $BoardCanvas
 @onready var paint_canvas: PaintCanvas = $PaintCanvas
+@onready var drops_container: Node2D = $Drops
 @onready var enemies_container: Node2D = $Enemies
 @onready var player: Player = $Player
 @onready var projectiles_container: Node2D = $Projectiles
@@ -124,10 +125,14 @@ func _setup_progression() -> void:
 
 func _on_wave_completed(_wave: int) -> void:
 	player.heal_fraction(per_wave_heal_fraction)
+	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
+		(drop as PaintDrop).attract()
 
 
 func _on_progression_due(wave: int) -> void:
 	player.heal_to_full()
+	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
+		(drop as PaintDrop).collect()
 	progression_screen.open(wave, ability_controller.get_abilities(), player)
 
 
@@ -143,15 +148,17 @@ func _on_progression_new_ability_chosen() -> void:
 
 
 func _on_in_run_ability_created(index: int) -> void:
-	ability_controller.add_ability(index)
+	if progression_screen.pay_for_new_ability():
+		ability_controller.add_ability(index)
+	else:
+		push_warning("[Arena] Gotas insuficientes para a habilidade %d; compra ignorada." % index)
 	in_run_creator_layer.visible = false
-	progression_screen.close()
-	wave_manager.resume_after_progression()
+	progression_screen.return_to_shop()
 
 
 func _on_in_run_ability_cancelled() -> void:
 	in_run_creator_layer.visible = false
-	progression_screen.visible = true
+	progression_screen.return_to_shop()
 
 
 func _next_free_ability_index() -> int:

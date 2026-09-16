@@ -4,6 +4,7 @@ extends CharacterBody2D
 signal health_changed(current_hp: float, max_hp: float)
 signal died
 signal dashed
+signal ink_changed(total: int)
 
 const ENEMY_LAYER_NUMBER: int = 3
 const DASH_ALPHA: float = 0.55
@@ -33,6 +34,7 @@ const MIN_DASH_COOLDOWN: float = 0.35
 @export var dash_invulnerability_grace: float = 0.12
 
 var current_hp: float = 100.0
+var ink: int = 0
 var _is_dead: bool = false
 var _flash_tween: Tween = null
 
@@ -230,6 +232,21 @@ func heal_fraction(fraction: float) -> void:
 		return
 	current_hp = minf(current_hp + max_hp * fraction, max_hp)
 	health_changed.emit(current_hp, max_hp)
+
+
+func add_ink(amount: int) -> void:
+	if amount <= 0:
+		return
+	ink += amount
+	ink_changed.emit(ink)
+
+
+func spend_ink(amount: int) -> bool:
+	if amount < 0 or amount > ink:
+		return false
+	ink -= amount
+	ink_changed.emit(ink)
+	return true
 
 
 func _flash_damage() -> void:

@@ -14,6 +14,7 @@ enum DashPhase { READY, WINDUP, DASHING, RECOVER }
 const PRESETS: Dictionary = {
 	EnemyType.COMMON: {
 		"max_hp": 30.0,
+		"ink_drop_chance": 0.35,
 		"speed": 140.0,
 		"contact_damage": 10.0,
 		"collision_radius": 18.0,
@@ -30,6 +31,7 @@ const PRESETS: Dictionary = {
 	},
 	EnemyType.FAST: {
 		"max_hp": 15.0,
+		"ink_drop_chance": 0.35,
 		"speed": 260.0,
 		"contact_damage": 5.0,
 		"collision_radius": 14.0,
@@ -44,6 +46,7 @@ const PRESETS: Dictionary = {
 	},
 	EnemyType.TANK: {
 		"max_hp": 100.0,
+		"ink_drop_chance": 0.4,
 		"speed": 90.0,
 		"contact_damage": 25.0,
 		"collision_radius": 32.0,
@@ -60,6 +63,7 @@ const PRESETS: Dictionary = {
 	},
 	EnemyType.STALKER: {
 		"max_hp": 12.0,
+		"ink_drop_chance": 0.5,
 		"speed": 320.0,
 		"contact_damage": 15.0,
 		"collision_radius": 11.0,
@@ -154,6 +158,7 @@ var split_scale: float = 1.0
 var explosion_radius: float = 0.0
 var explosion_damage: float = 0.0
 var explosion_paint_radius: float = 0.0
+var ink_drop_chance: float = 0.0
 
 @export var generation: int = 0
 
@@ -212,6 +217,7 @@ func _apply_preset() -> void:
 	explosion_radius = preset.get("explosion_radius", 0.0) * shrink
 	explosion_damage = preset.get("explosion_damage", 0.0) * shrink
 	explosion_paint_radius = preset.get("explosion_paint_radius", 0.0) * shrink
+	ink_drop_chance = preset.get("ink_drop_chance", 0.0)
 
 	speed = preset["speed"] * randf_range(0.9, 1.1)
 
@@ -731,6 +737,7 @@ func _die() -> void:
 	if split_generations > 0:
 		_explode()
 	_splat_on_death()
+	_drop_ink()
 	AudioManager.play_enemy_death()
 	died.emit(self)
 
@@ -744,6 +751,18 @@ func _die() -> void:
 	tween.tween_property(sprite, "modulate:a", 0.0, DEATH_ANIM_DURATION)
 	await tween.finished
 	queue_free()
+
+
+func _drop_ink() -> void:
+	if randf() >= ink_drop_chance:
+		return
+	var container: Node2D = get_tree().get_first_node_in_group(PaintDrop.CONTAINER_GROUP) as Node2D
+	if container == null:
+		return
+	var drop: PaintDrop = PaintDrop.new()
+	drop.setup(trail_color)
+	drop.position = container.to_local(global_position)
+	container.add_child(drop)
 
 
 func _build_texture(shape: String, half_size: int, color: Color) -> ImageTexture:

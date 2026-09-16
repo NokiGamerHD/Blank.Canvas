@@ -13,7 +13,7 @@ const PERKS: Dictionary = {
 	"momentum": AbilityData.ShotType.RAPID,
 }
 
-const VAMPIRISM_FRACTION: float = 0.10
+const VAMPIRISM_FRACTION: float = 0.03
 
 const RICOCHET_BASE_BOUNCES: int = 1
 const RICOCHET_RANGE: float = 320.0

@@ -20,6 +20,11 @@ const POISON_DEMO_DISTANCE: float = 230.0
 const POISON_DEMO_SECONDS: float = 1.4
 const POISON_DEMO_DPS: float = 2.45
 const HARNESS_INVULNERABILITY: float = 1.0e9
+const INK_DEMO_COUNT: int = 8
+const INK_DEMO_DISTANCE: float = 150.0
+const INK_DEMO_SETTLE: float = 0.5
+const SHOP_DEMO_INK: int = 26
+const SHOP_DEMO_SHORT_INK: int = 7
 
 @export var arena_seconds: float = 8.0
 
@@ -156,11 +161,18 @@ func _capture_arena() -> void:
 	arena.get_node("PauseScreen").close()
 
 	var controller: AbilityController = arena.get_node("Player/AbilityController")
+	arena.player.add_ink(SHOP_DEMO_INK)
 	arena.get_node("ProgressionScreen").open(5, controller.get_abilities(), arena.player)
 	await _capture("10_arena_progressao")
 	if _show_dash_upgrade_option(arena.get_node("ProgressionScreen")):
 		await _capture("20_arena_upgrades")
 	arena.get_node("ProgressionScreen").close()
+	arena.player.spend_ink(arena.player.ink - SHOP_DEMO_SHORT_INK)
+	arena.get_node("ProgressionScreen").open(5, controller.get_abilities(), arena.player)
+	await _capture("29_loja_sem_gotas")
+	arena.get_node("ProgressionScreen").close()
+
+	await _capture_ink_drops_demo(arena)
 
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
@@ -398,6 +410,26 @@ func _capture_poison_demo(arena: Arena) -> void:
 		enemy.add_poison(POISON_DEMO_DPS)
 	await get_tree().create_timer(POISON_DEMO_SECONDS).timeout
 	await _capture("26_veneno_fumaca_e_rastro")
+
+
+func _capture_ink_drops_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var types: Array = EnemyBase.PRESETS.keys()
+	var drops: Array[PaintDrop] = []
+	for index in INK_DEMO_COUNT:
+		var drop: PaintDrop = PaintDrop.new()
+		drop.setup(EnemyBase.PRESETS[types[index % types.size()]]["trail_color"])
+		var angle: float = TAU * float(index) / float(INK_DEMO_COUNT) + 0.3
+		drop.position = arena.drops_container.to_local(
+			arena.player.global_position + Vector2.from_angle(angle) * INK_DEMO_DISTANCE)
+		arena.drops_container.add_child(drop)
+		drops.append(drop)
+	await get_tree().create_timer(INK_DEMO_SETTLE).timeout
+	await _capture("28_gotas_de_tinta")
+	for drop in drops:
+		if is_instance_valid(drop):
+			drop.queue_free()
 
 
 func _keep_player_alive(arena: Arena) -> void:
