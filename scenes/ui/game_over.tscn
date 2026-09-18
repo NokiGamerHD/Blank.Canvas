@@ -91,6 +91,17 @@ amplitude_pixels = 3.0
 period_seconds = 3.1
 phase_offset = 0.8
 
+[node name="CoverageLabel" type="Label" parent="CenterContainer/MenuContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.4, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "CANVAS PAINTED: 0%"
+horizontal_alignment = 1
+script = ExtResource("5_float")
+amplitude_pixels = 3.0
+period_seconds = 3.3
+phase_offset = 1.0
+
 [node name="Spacer" type="Control" parent="CenterContainer/MenuContainer"]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2

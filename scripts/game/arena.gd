@@ -175,6 +175,7 @@ func _setup_pause() -> void:
 
 func _on_player_died_capture_canvas() -> void:
 	GameManager.set_last_canvas_snapshot(paint_canvas.get_image_copy())
+	GameManager.last_canvas_coverage = paint_canvas.coverage()
 
 
 func _apply_crosshair_cursor() -> void:

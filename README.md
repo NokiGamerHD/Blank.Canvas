@@ -38,8 +38,12 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 
 - A 36×36 pixel editor for the character and every ability, including a
   color palette, brush, eraser, and undo/redo
-- Cumulative arena painting: enemy trails and projectile impacts
-  permanently paint the canvas
+- Cumulative arena painting: enemy trails and projectile impacts permanently
+  paint the canvas
+- Fresh paint shines and mixes into a new color when another trail crosses it,
+  then dries after a few seconds
+- Fresh paint is terrain: a single wet color slows you down, while fresh mixed
+  paint is slick and speeds you up
 - Mouse aiming and a dash with invulnerability frames and its own cooldown
 - Three shot types per ability: homing standard, hold-to-charge and rapid fire
 - Nine one-time special upgrades, three per shot type, each scaling with another

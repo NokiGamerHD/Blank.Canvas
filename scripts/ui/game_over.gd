@@ -5,6 +5,7 @@ const BEST_COLOR: Color = Color(0.4, 0.4, 0.4, 1.0)
 
 @onready var wave_label: Label = $CenterContainer/MenuContainer/WaveLabel
 @onready var best_wave_label: Label = $CenterContainer/MenuContainer/BestWaveLabel
+@onready var coverage_label: Label = $CenterContainer/MenuContainer/CoverageLabel
 @onready var retry_button: Button = $CenterContainer/MenuContainer/RetryButton
 @onready var new_drawing_button: Button = $CenterContainer/MenuContainer/NewDrawingButton
 @onready var save_scenario_button: Button = $CenterContainer/MenuContainer/SaveScenarioButton
@@ -32,11 +33,19 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _apply_translations() -> void:
 	wave_label.text = LocalizationManager.text("game_over.wave_reached", [GameManager.last_wave_reached])
+	coverage_label.text = LocalizationManager.text("game_over.coverage", [coverage_percent()])
 	retry_button.text = LocalizationManager.text("game_over.retry")
 	new_drawing_button.text = LocalizationManager.text("game_over.new_drawing")
 	save_scenario_button.text = LocalizationManager.text("game_over.save_scenario")
 	menu_button.text = LocalizationManager.text("game_over.menu")
 	_apply_best_wave()
+
+
+func coverage_percent() -> int:
+	var percent: float = GameManager.last_canvas_coverage * 100.0
+	if percent > 0.0 and percent < 1.0:
+		return 1
+	return int(roundf(percent))
 
 
 func _apply_best_wave() -> void:

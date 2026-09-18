@@ -12,6 +12,19 @@ const GHOST_INTERVAL: float = 0.03
 const GHOST_FADE: float = 0.22
 const GHOST_ALPHA: float = 0.5
 const MIN_DASH_COOLDOWN: float = 0.35
+const FRESH_PAINT_SPEED: float = 0.58
+const MIXED_PAINT_SPEED: float = 1.45
+const PAINT_PUFF_PATTERN: Array[String] = [
+	".#.",
+	"###",
+	".#.",
+]
+const PAINT_PUFF_SCALE: int = 3
+const PAINT_PUFF_INTERVAL: float = 0.18
+const PAINT_PUFF_RISE: float = 10.0
+const PAINT_PUFF_TIME: float = 0.32
+const PAINT_PUFF_SPREAD: float = 9.0
+const PAINT_PUFF_WHITE_MIX: float = 0.68
 
 @export var max_speed: float = 320.0
 
@@ -51,6 +64,14 @@ var _ghost_countdown: float = 0.0
 var _aim_override_enabled: bool = false
 var _aim_override: Vector2 = Vector2.ZERO
 
+var _paint_canvas: PaintCanvas = null
+var _footing: PaintCanvas.Footing = PaintCanvas.Footing.CLEAN
+var _footing_speed: float = 1.0
+var _footing_color: Color = Color(0, 0, 0, 0)
+var _puff_timer: float = 0.0
+
+static var _puff_textures: Dictionary = {}
+
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var camera: Camera2D = $Camera2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -70,11 +91,14 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("dash"):
 		try_dash(input_direction)
 
+	_update_footing(delta, input_direction != Vector2.ZERO)
+
 	if _dash_timer > 0.0:
 		_process_dash(delta)
 	else:
 		if input_direction != Vector2.ZERO:
-			_input_velocity = _input_velocity.move_toward(input_direction * max_speed, acceleration * delta)
+			_input_velocity = _input_velocity.move_toward(
+				input_direction * max_speed * _footing_speed, acceleration * _footing_speed * delta)
 		else:
 			_input_velocity = _input_velocity.move_toward(Vector2.ZERO, friction * delta)
 		_knockback = _knockback.move_toward(Vector2.ZERO, knockback_decay * delta)
@@ -82,6 +106,83 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	_update_facing()
+
+
+func _update_footing(delta: float, moving: bool) -> void:
+	if _paint_canvas == null or not is_instance_valid(_paint_canvas):
+		_paint_canvas = get_tree().get_first_node_in_group("paint_canvas") as PaintCanvas
+	if _paint_canvas == null:
+		_footing = PaintCanvas.Footing.CLEAN
+		_footing_speed = 1.0
+		_footing_color = Color(0, 0, 0, 0)
+		return
+
+	_footing = _paint_canvas.footing_at(global_position)
+	_footing_color = _paint_canvas.color_at(global_position)
+	match _footing:
+		PaintCanvas.Footing.FRESH_MIX:
+			_footing_speed = MIXED_PAINT_SPEED
+		PaintCanvas.Footing.FRESH:
+			_footing_speed = FRESH_PAINT_SPEED
+		_:
+			_footing_speed = 1.0
+
+	_puff_timer -= delta
+	if _footing == PaintCanvas.Footing.CLEAN or not moving or _dash_timer > 0.0 or _puff_timer > 0.0:
+		return
+	_puff_timer = PAINT_PUFF_INTERVAL
+	_spawn_paint_puff(_paint_canvas.color_at(global_position))
+
+
+func footing() -> PaintCanvas.Footing:
+	return _footing
+
+
+func footing_speed() -> float:
+	return _footing_speed
+
+
+func footing_color() -> Color:
+	return _footing_color
+
+
+func _spawn_paint_puff(color: Color) -> void:
+	var container: Node = get_tree().get_first_node_in_group("effects_container")
+	if container == null or color.a <= 0.0:
+		return
+	var puff: Sprite2D = Sprite2D.new()
+	puff.texture = _get_puff_texture(color)
+	puff.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	puff.set_meta("paint_puff", true)
+	puff.position = global_position + Vector2(
+		randf_range(-PAINT_PUFF_SPREAD, PAINT_PUFF_SPREAD), randf_range(0.0, PAINT_PUFF_SPREAD))
+	container.add_child(puff)
+
+	var tween: Tween = puff.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(puff, "position:y", puff.position.y - PAINT_PUFF_RISE, PAINT_PUFF_TIME)
+	tween.tween_property(puff, "modulate:a", 0.0, PAINT_PUFF_TIME)
+	tween.finished.connect(puff.queue_free)
+
+
+static func _get_puff_texture(paint_color: Color) -> ImageTexture:
+	var color: Color = paint_color.lerp(Color(1, 1, 1, paint_color.a), PAINT_PUFF_WHITE_MIX)
+	var key: int = color.to_rgba32()
+	if _puff_textures.has(key):
+		return _puff_textures[key]
+	var height: int = PAINT_PUFF_PATTERN.size()
+	var width: int = PAINT_PUFF_PATTERN[0].length()
+	var image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in height:
+		var row: String = PAINT_PUFF_PATTERN[y]
+		for x in mini(width, row.length()):
+			if row[x] == "#":
+				image.set_pixel(x, y, color)
+	image.resize(width * PAINT_PUFF_SCALE, height * PAINT_PUFF_SCALE, Image.INTERPOLATE_NEAREST)
+	var texture: ImageTexture = ImageTexture.create_from_image(image)
+	_puff_textures[key] = texture
+	return texture
 
 
 func try_dash(direction: Vector2) -> bool:

@@ -25,6 +25,11 @@ const INK_DEMO_DISTANCE: float = 150.0
 const INK_DEMO_SETTLE: float = 0.5
 const SHOP_DEMO_INK: int = 26
 const SHOP_DEMO_SHORT_INK: int = 7
+const MIX_DEMO_OFFSET: Vector2 = Vector2(0.0, -150.0)
+const MIX_DEMO_HALF: float = 120.0
+const MIX_DEMO_RADIUS: float = 10.0
+const FOOTING_DEMO_RADIUS: float = 34.0
+const FOOTING_DEMO_WALK: float = 0.5
 
 @export var arena_seconds: float = 8.0
 
@@ -173,6 +178,9 @@ func _capture_arena() -> void:
 	arena.get_node("ProgressionScreen").close()
 
 	await _capture_ink_drops_demo(arena)
+	await _capture_paint_mix_demo(arena)
+	await _capture_footing_demo(arena)
+	await _capture_hurt_edges_demo(arena)
 
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
@@ -304,6 +312,7 @@ func _spawn_dash_demo(arena: Arena) -> bool:
 
 func _capture_game_over() -> void:
 	GameManager.last_wave_reached = 12
+	GameManager.last_canvas_coverage = 0.23
 	GameManager.last_run_was_record = false
 	var normal: Node = _show_scene(GameManager.SCENE_GAME_OVER)
 	if normal != null:
@@ -430,6 +439,51 @@ func _capture_ink_drops_demo(arena: Arena) -> void:
 	for drop in drops:
 		if is_instance_valid(drop):
 			drop.queue_free()
+
+
+func _capture_paint_mix_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var canvas: PaintCanvas = arena.paint_canvas
+	var center: Vector2 = arena.player.global_position + MIX_DEMO_OFFSET
+	var red: Color = EnemyBase.PRESETS[EnemyBase.EnemyType.COMMON]["trail_color"]
+	var blue: Color = EnemyBase.PRESETS[EnemyBase.EnemyType.FAST]["trail_color"]
+	var yellow: Color = EnemyBase.PRESETS[EnemyBase.EnemyType.STALKER]["trail_color"]
+	var green: Color = EnemyBase.PRESETS[EnemyBase.EnemyType.TANK]["trail_color"]
+	var left: Vector2 = center + Vector2(-MIX_DEMO_HALF * 2.0, 0.0)
+	var right: Vector2 = center + Vector2(MIX_DEMO_HALF * 2.0, 0.0)
+	canvas.paint_line(left + Vector2(0.0, -60.0), right + Vector2(0.0, -60.0), MIX_DEMO_RADIUS, green)
+	canvas.dry_all()
+	canvas.paint_line(left + Vector2(0.0, 40.0), right + Vector2(0.0, 40.0), MIX_DEMO_RADIUS, red)
+	for index in 3:
+		var x: float = -MIX_DEMO_HALF + MIX_DEMO_HALF * float(index)
+		var color: Color = [blue, yellow, blue][index]
+		canvas.paint_line(center + Vector2(x, -120.0), center + Vector2(x, 100.0), MIX_DEMO_RADIUS, color)
+	await _capture("30_mistura_de_tinta")
+
+
+func _capture_footing_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var canvas: PaintCanvas = arena.paint_canvas
+	var start: Vector2 = arena.player.global_position
+	var finish: Vector2 = start + Vector2(260.0, 0.0)
+	canvas.paint_line(start - Vector2(60.0, 0.0), finish, FOOTING_DEMO_RADIUS,
+		EnemyBase.PRESETS[EnemyBase.EnemyType.COMMON]["trail_color"])
+	canvas.paint_line(start - Vector2(60.0, 0.0), finish, FOOTING_DEMO_RADIUS,
+		EnemyBase.PRESETS[EnemyBase.EnemyType.FAST]["trail_color"])
+	Input.action_press("move_right")
+	await get_tree().create_timer(FOOTING_DEMO_WALK).timeout
+	await _capture_immediately("31_pisando_na_tinta")
+	Input.action_release("move_right")
+	_keep_player_alive(arena)
+
+
+func _capture_hurt_edges_demo(arena: Arena) -> void:
+	arena.player._invulnerable_timer = 0.0
+	arena.player.take_damage(12.0)
+	await _capture_immediately("32_borda_de_dano")
+	_keep_player_alive(arena)
 
 
 func _keep_player_alive(arena: Arena) -> void:

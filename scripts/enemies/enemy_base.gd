@@ -18,7 +18,7 @@ const PRESETS: Dictionary = {
 		"speed": 140.0,
 		"contact_damage": 10.0,
 		"collision_radius": 18.0,
-		"trail_color": Color("b43434", 0.85),
+		"trail_color": Color("b43434"),
 		"trail_radius": 10.0,
 		"sheet": "res://assets/sprites/enemies/slime.png",
 		"columns": 2, "rows": 3, "frame_count": 6,
@@ -35,7 +35,7 @@ const PRESETS: Dictionary = {
 		"speed": 260.0,
 		"contact_damage": 5.0,
 		"collision_radius": 14.0,
-		"trail_color": Color("0b35dc", 0.85),
+		"trail_color": Color("0b35dc"),
 		"trail_radius": 7.0,
 		"sheet": "res://assets/sprites/enemies/bola.png",
 		"columns": 4, "rows": 4, "frame_count": 14,
@@ -50,7 +50,7 @@ const PRESETS: Dictionary = {
 		"speed": 90.0,
 		"contact_damage": 25.0,
 		"collision_radius": 32.0,
-		"trail_color": Color("15b10f", 0.85),
+		"trail_color": Color("15b10f"),
 		"trail_radius": 18.0,
 		"sheet": "res://assets/sprites/enemies/quadrado.png",
 		"columns": 5, "rows": 5, "frame_count": 23,
@@ -67,7 +67,7 @@ const PRESETS: Dictionary = {
 		"speed": 320.0,
 		"contact_damage": 15.0,
 		"collision_radius": 11.0,
-		"trail_color": Color("e0b400", 0.85),
+		"trail_color": Color("e0b400"),
 		"trail_radius": 5.0,
 		"sheet": "res://assets/sprites/enemies/bola_amarela.png",
 		"columns": 4, "rows": 4, "frame_count": 14,
@@ -86,7 +86,7 @@ const PAINT_SPACING: float = 6.0
 
 const DEATH_ANIM_DURATION: float = 0.15
 const POISON_TINT: Color = Color(0.78, 0.6, 1.0, 1.0)
-const POISON_TRAIL_COLOR: Color = Color(0.56, 0.3, 0.82, 0.9)
+const POISON_TRAIL_COLOR: Color = Color(0.56, 0.3, 0.82, 1.0)
 const POISON_TRAIL_RADIUS: float = 4.0
 const POISON_PUFF_COLOR: Color = Color(0.6, 0.32, 0.9, 0.95)
 const POISON_PUFF_INTERVAL: float = 0.28
@@ -514,7 +514,7 @@ func _paint_trail() -> void:
 		return
 	canvas.paint_line(_last_paint_position, global_position, trail_radius, trail_color)
 	if _poison_stacks > 0:
-		canvas.paint_line(_last_paint_position, global_position, POISON_TRAIL_RADIUS, POISON_TRAIL_COLOR)
+		canvas.paint_line(_last_paint_position, global_position, POISON_TRAIL_RADIUS, POISON_TRAIL_COLOR, false)
 	_last_paint_position = global_position
 
 

@@ -246,7 +246,7 @@ func _paint_impact(impact_position: Vector2) -> void:
 func _get_paint_color() -> Color:
 	var texture: Texture2D = sprite.texture
 	if texture == null:
-		return Color(0.2, 0.2, 0.2, 0.9)
+		return Color(0.2, 0.2, 0.2, 1.0)
 	if _paint_color_cache.has(texture):
 		return _paint_color_cache[texture]
 
@@ -256,7 +256,7 @@ func _get_paint_color() -> Color:
 
 
 static func _compute_average_color(image: Image) -> Color:
-	var fallback: Color = Color(0.2, 0.2, 0.2, 0.9)
+	var fallback: Color = Color(0.2, 0.2, 0.2, 1.0)
 	if image == null:
 		return fallback
 
@@ -278,10 +278,10 @@ static func _compute_average_color(image: Image) -> Color:
 
 	if bright_count > 0:
 		var bright: Vector3 = bright_sum / float(bright_count)
-		return Color(bright.x, bright.y, bright.z, 0.9)
+		return Color(bright.x, bright.y, bright.z, 1.0)
 	if all_count > 0:
 		var average: Vector3 = all_sum / float(all_count)
-		return Color(average.x, average.y, average.z, 0.9)
+		return Color(average.x, average.y, average.z, 1.0)
 	return fallback
 
 
