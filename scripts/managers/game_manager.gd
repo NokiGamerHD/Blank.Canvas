@@ -3,7 +3,7 @@ extends Node
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "2.4.0"
+const VERSION: String = "2.6.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -36,6 +36,8 @@ var ability_shot_types: Array[int] = []
 var last_wave_reached: int = 0
 
 var last_canvas_snapshot: Image = null
+
+var last_canvas_coverage: float = 0.0
 
 var last_saved_scenario_path: String = ""
 
@@ -106,6 +108,7 @@ func reset_run_data() -> void:
 	ability_shot_types.clear()
 	last_wave_reached = 0
 	last_canvas_snapshot = null
+	last_canvas_coverage = 0.0
 	last_run_was_record = false
 
 
@@ -185,6 +188,7 @@ func restart_run() -> bool:
 		return false
 	last_wave_reached = 0
 	last_canvas_snapshot = null
+	last_canvas_coverage = 0.0
 	last_run_was_record = false
 	if ability_images.size() > 1:
 		ability_images.resize(1)

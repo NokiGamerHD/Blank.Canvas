@@ -49,6 +49,7 @@ var _player: Player = null
 var _dash_slot: AbilitySlot = null
 var _controls_hint: Label = null
 var _stats_panel: StatsPanel = null
+var _screen_edges: ScreenEdges = null
 var _ink_label: Label = null
 var _dash_icon_large: ImageTexture = null
 var _dash_icon_small: ImageTexture = null
@@ -76,6 +77,8 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _dash_slot != null and _player != null:
 		_dash_slot.set_cooldown_fraction(_player.dash_cooldown_fraction())
+	if _screen_edges != null and _player != null:
+		_screen_edges.apply_footing(_player.footing(), _player.footing_color())
 
 	if _ability_controller == null:
 		return
@@ -98,6 +101,8 @@ func update_wave(wave: int) -> void:
 
 
 func update_hp(current_hp: float, max_hp: float) -> void:
+	if _screen_edges != null and current_hp < _current_hp:
+		_screen_edges.flash_hurt()
 	_current_hp = current_hp
 	_max_hp = max_hp
 	hp_label.text = LocalizationManager.text("hud.hp", [ceili(_current_hp), int(_max_hp)])
@@ -109,6 +114,7 @@ func setup_abilities(controller: AbilityController) -> void:
 
 func setup_player(player: Player) -> void:
 	_player = player
+	_build_screen_edges()
 	_build_stats_panel()
 	_build_ink_row()
 	if _dash_slot != null:
@@ -120,6 +126,18 @@ func setup_player(player: Player) -> void:
 	abilities_row.move_child(_dash_slot, 0)
 	_dash_slot.set_pixel_icon(_dash_icon_large, DASH_COOLDOWN_OVERLAY)
 	_fit_ability_bar()
+
+
+func screen_edges() -> ScreenEdges:
+	return _screen_edges
+
+
+func _build_screen_edges() -> void:
+	if _screen_edges != null:
+		return
+	_screen_edges = ScreenEdges.new()
+	add_child(_screen_edges)
+	move_child(_screen_edges, 0)
 
 
 func update_ink(total: int) -> void:

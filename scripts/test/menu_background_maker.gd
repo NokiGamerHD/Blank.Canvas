@@ -80,6 +80,7 @@ func _paint_marks(arena: Arena, origin: Vector2, rng: RandomNumberGenerator) -> 
 				_paint_splat(arena, spot, radius, color, rng)
 			else:
 				_paint_stroke(arena, spot, radius, color, rng)
+			arena.paint_canvas.dry_all()
 			index += 1
 
 
