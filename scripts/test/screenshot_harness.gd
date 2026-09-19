@@ -25,6 +25,9 @@ const INK_DEMO_DISTANCE: float = 150.0
 const INK_DEMO_SETTLE: float = 0.5
 const SHOP_DEMO_INK: int = 26
 const SHOP_DEMO_SHORT_INK: int = 7
+const BOSS_DEMO_DISTANCE: float = 230.0
+const BOSS_DEMO_SETTLE: float = 0.6
+const BOSS_SHARD_FLIGHT: float = 0.45
 const MIX_DEMO_OFFSET: Vector2 = Vector2(0.0, -150.0)
 const MIX_DEMO_HALF: float = 120.0
 const MIX_DEMO_RADIUS: float = 10.0
@@ -181,6 +184,7 @@ func _capture_arena() -> void:
 	await _capture_paint_mix_demo(arena)
 	await _capture_footing_demo(arena)
 	await _capture_hurt_edges_demo(arena)
+	await _capture_boss_demo(arena)
 
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
@@ -483,6 +487,29 @@ func _capture_hurt_edges_demo(arena: Arena) -> void:
 	arena.player._invulnerable_timer = 0.0
 	arena.player.take_damage(12.0)
 	await _capture_immediately("32_borda_de_dano")
+	_keep_player_alive(arena)
+
+
+func _capture_boss_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	var boss: EnemyBase = scene.instantiate()
+	boss.enemy_type = EnemyBase.EnemyType.BOSS
+	boss.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+	boss.position = arena.player.global_position + Vector2(BOSS_DEMO_DISTANCE, -40.0)
+	arena.enemies_container.add_child(boss)
+	boss.set_physics_process(false)
+	await get_tree().create_timer(BOSS_DEMO_SETTLE).timeout
+	await _capture("33_chefe")
+
+	boss.take_damage(1.0e9, false)
+	await get_tree().create_timer(BOSS_SHARD_FLIGHT).timeout
+	await _capture_immediately("34_estilhacos_do_chefe")
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	for child in arena.projectiles_container.get_children():
+		child.queue_free()
 	_keep_player_alive(arena)
 
 

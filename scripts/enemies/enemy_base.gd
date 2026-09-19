@@ -5,7 +5,7 @@ signal died(enemy: EnemyBase)
 
 signal split_into(child: EnemyBase)
 
-enum EnemyType { COMMON, FAST, TANK, STALKER }
+enum EnemyType { COMMON, FAST, TANK, STALKER, BOSS }
 
 enum Behavior { CHASE, ZIGZAG, ORBIT }
 
@@ -61,6 +61,25 @@ const PRESETS: Dictionary = {
 		"split_generations": 2, "split_scale": 0.68,
 		"explosion_radius": 92.0, "explosion_damage": 12.0, "explosion_paint_radius": 44.0,
 	},
+	EnemyType.BOSS: {
+		"max_hp": 1300.0,
+		"ink_drop_chance": 0.3,
+		"speed": 86.0,
+		"contact_damage": 38.0,
+		"collision_radius": 70.0,
+		"trail_color": Color("b10f73"),
+		"trail_radius": 34.0,
+		"sheet": "res://assets/sprites/enemies/quadrado.png",
+		"columns": 5, "rows": 5, "frame_count": 23,
+		"fps": 16.0,
+		"sprite_scale": 0.66,
+		"recolor": true,
+		"shape": "square", "texture_half_size": 26, "color": Color("b10f73"),
+		"behavior": Behavior.CHASE,
+		"split_generations": 4, "split_scale": 0.72,
+		"explosion_radius": 120.0, "explosion_damage": 18.0, "explosion_paint_radius": 70.0,
+		"boss": true, "shard_count": 14, "shard_generations": 1,
+	},
 	EnemyType.STALKER: {
 		"max_hp": 12.0,
 		"ink_drop_chance": 0.5,
@@ -112,6 +131,9 @@ const EXPLOSION_PUFF_SCALE: float = 2.6
 const EXPLOSION_PUFF_TIME: float = 0.26
 const EXPLOSION_PUFF_ALPHA: float = 0.7
 const EXPLOSION_SPATTERS: int = 5
+const SHARD_COUNT_STEP: int = 5
+const MIN_SHARD_COUNT: int = 6
+const RECOLOR_MIN_SATURATION: float = 0.15
 
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 
@@ -159,6 +181,9 @@ var explosion_radius: float = 0.0
 var explosion_damage: float = 0.0
 var explosion_paint_radius: float = 0.0
 var ink_drop_chance: float = 0.0
+var is_boss: bool = false
+var shard_count: int = 0
+var shard_generations: int = 0
 
 @export var generation: int = 0
 
@@ -218,6 +243,9 @@ func _apply_preset() -> void:
 	explosion_damage = preset.get("explosion_damage", 0.0) * shrink
 	explosion_paint_radius = preset.get("explosion_paint_radius", 0.0) * shrink
 	ink_drop_chance = preset.get("ink_drop_chance", 0.0)
+	is_boss = preset.get("boss", false)
+	shard_count = preset.get("shard_count", 0)
+	shard_generations = preset.get("shard_generations", 0)
 
 	speed = preset["speed"] * randf_range(0.9, 1.1)
 
@@ -247,6 +275,8 @@ func _apply_visual(preset: Dictionary) -> void:
 		sprite.scale = Vector2.ONE * preset["sprite_scale"] * pow(split_scale, generation)
 		sprite.speed_scale = speed / preset["speed"]
 		sprite.play("walk")
+		if is_boss:
+			_build_aura()
 	else:
 		push_warning("[EnemyBase] Sprite sheet ausente (%s); usando visual procedural." % preset["sheet"])
 		var fallback: SpriteFrames = SpriteFrames.new()
@@ -268,6 +298,10 @@ static func _get_sprite_frames(type: EnemyType, preset: Dictionary) -> SpriteFra
 	var sheet: Texture2D = load(sheet_path)
 	if sheet == null:
 		return null
+	if preset.get("recolor", false):
+		sheet = _recolored_sheet(sheet, preset["trail_color"])
+		if sheet == null:
+			return null
 
 	var frames: SpriteFrames = SpriteFrames.new()
 	frames.add_animation("walk")
@@ -289,6 +323,45 @@ static func _get_sprite_frames(type: EnemyType, preset: Dictionary) -> SpriteFra
 
 	_frames_cache[type] = frames
 	return frames
+
+
+static func _recolored_sheet(sheet: Texture2D, tint: Color) -> Texture2D:
+	var source: Image = sheet.get_image()
+	if source == null:
+		push_warning("[EnemyBase] Folha do chefe não pôde ser lida; usando a cor original.")
+		return sheet
+	source = source.duplicate()
+	source.convert(Image.FORMAT_RGBA8)
+	for y in source.get_height():
+		for x in source.get_width():
+			var pixel: Color = source.get_pixel(x, y)
+			if pixel.a <= 0.0 or pixel.s < RECOLOR_MIN_SATURATION:
+				continue
+			source.set_pixel(x, y, Color.from_hsv(tint.h, pixel.s, pixel.v, pixel.a))
+	return ImageTexture.create_from_image(source)
+
+
+func _build_aura() -> void:
+	var aura: BossAura = BossAura.new()
+	add_child(aura)
+	move_child(aura, 0)
+	aura.setup(collision_radius, trail_color)
+
+
+func _spawn_boss_shards() -> void:
+	if not is_boss or shard_count <= 0 or generation > shard_generations:
+		return
+	var container: Node = get_tree().get_first_node_in_group("projectiles_container")
+	if container == null:
+		return
+	var count: int = maxi(shard_count - generation * SHARD_COUNT_STEP, MIN_SHARD_COUNT)
+	var start_angle: float = randf() * TAU
+	for index in count:
+		var shard: BossShard = BossShard.new()
+		shard.setup(
+			Vector2.from_angle(start_angle + TAU * float(index) / float(count)), trail_color, _arena_bounds)
+		shard.position = global_position
+		container.add_child(shard)
 
 
 func _physics_process(delta: float) -> void:
@@ -707,6 +780,7 @@ func _explode() -> void:
 
 	AudioManager.play_enemy_explode()
 	_spawn_explosion_puff()
+	_spawn_boss_shards()
 
 
 func _spawn_explosion_puff() -> void:

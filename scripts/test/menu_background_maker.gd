@@ -14,6 +14,14 @@ const MARK_TYPES: Array[int] = [
 	EnemyBase.EnemyType.STALKER,
 ]
 
+const MARK_INK_TYPES: Array[int] = [
+	EnemyBase.EnemyType.COMMON,
+	EnemyBase.EnemyType.FAST,
+	EnemyBase.EnemyType.TANK,
+	EnemyBase.EnemyType.STALKER,
+	EnemyBase.EnemyType.BOSS,
+]
+
 const ENEMY_CELLS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(3, 1), Vector2i(0, 2), Vector2i(4, 3),
 ]
@@ -71,7 +79,7 @@ func _paint_marks(arena: Arena, origin: Vector2, rng: RandomNumberGenerator) -> 
 	var index: int = 0
 	for row in GRID.y:
 		for column in GRID.x:
-			var preset: Dictionary = EnemyBase.PRESETS[MARK_TYPES[index % MARK_TYPES.size()]]
+			var preset: Dictionary = EnemyBase.PRESETS[MARK_INK_TYPES[index % MARK_INK_TYPES.size()]]
 			var color: Color = preset["trail_color"]
 			var radius: float = mark_radius
 			var spot: Vector2 = _cell_center(origin, column, row, rng)
