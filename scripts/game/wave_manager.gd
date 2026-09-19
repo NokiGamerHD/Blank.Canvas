@@ -13,6 +13,9 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 
 @export var waves_per_progression: int = 5
 
+@export var boss_wave_interval: int = 10
+
+
 @export var hp_scale_per_wave: float = 0.08
 
 @export var first_wave_delay: float = 2.0
@@ -71,7 +74,13 @@ func _ready() -> void:
 
 
 func enemies_in_wave(wave: int) -> int:
+	if is_boss_wave(wave):
+		return 0
 	return base_enemies_per_wave + (wave - 1) * enemies_increment_per_wave
+
+
+func is_boss_wave(wave: int) -> bool:
+	return boss_wave_interval > 0 and wave % boss_wave_interval == 0
 
 
 func _spawn_interval_for_wave(wave: int) -> float:
@@ -87,6 +96,8 @@ func _start_wave(wave: int) -> void:
 	wave_changed.emit(wave)
 	_spawn_timer.wait_time = _spawn_interval_for_wave(wave)
 	_spawn_timer.start()
+	if is_boss_wave(wave) and not _spawn_boss():
+		_to_spawn = 1
 
 
 func _on_spawn_timer_timeout() -> void:
@@ -101,6 +112,16 @@ func _on_spawn_timer_timeout() -> void:
 	_to_spawn -= 1
 	if _to_spawn <= 0:
 		_spawn_timer.stop()
+
+
+func _spawn_boss() -> bool:
+	var player: Player = get_tree().get_first_node_in_group("player") as Player
+	if player == null:
+		push_warning("[WaveManager] Sem jogador na wave de chefe; a wave vira comum.")
+		return false
+	var clearance: float = _spawn_clearance(EnemyBase.EnemyType.BOSS)
+	_spawn_enemy(EnemyBase.EnemyType.BOSS, _pick_spawn_position(player.global_position, clearance))
+	return true
 
 
 func _on_enemy_split(child: EnemyBase) -> void:

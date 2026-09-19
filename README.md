@@ -52,6 +52,9 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 - A stats panel under the minimap with life, attack, fire rate and the other
   numbers each upgrade changes
 - Endless waves with increasing difficulty and enemy variety
+- A boss every 10 waves, alone in its own wave: a giant splitting square with a
+  pulsing aura whose explosion sprays wide paint-trailing shards that fly all
+  the way to the arena walls
 - Enemies drop paint drops in their own ink color, collected by walking close
 - Progression every 5 waves: random upgrades, rerolls paid in paint drops and
   new abilities bought with them
