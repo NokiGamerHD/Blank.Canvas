@@ -5,6 +5,8 @@ signal wave_changed(wave: int)
 signal wave_completed(wave: int)
 signal progression_due(wave: int)
 
+signal boss_spawned(boss: EnemyBase)
+
 const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 
 @export var base_enemies_per_wave: int = 4
@@ -120,7 +122,9 @@ func _spawn_boss() -> bool:
 		push_warning("[WaveManager] Sem jogador na wave de chefe; a wave vira comum.")
 		return false
 	var clearance: float = _spawn_clearance(EnemyBase.EnemyType.BOSS)
-	_spawn_enemy(EnemyBase.EnemyType.BOSS, _pick_spawn_position(player.global_position, clearance))
+	var boss: EnemyBase = _spawn_enemy(
+		EnemyBase.EnemyType.BOSS, _pick_spawn_position(player.global_position, clearance))
+	boss_spawned.emit(boss)
 	return true
 
 
@@ -232,7 +236,7 @@ func _farthest_position_inside(player_position: Vector2, minimum: Vector2, maxim
 	return best
 
 
-func _spawn_enemy(type: EnemyBase.EnemyType, spawn_position: Vector2) -> void:
+func _spawn_enemy(type: EnemyBase.EnemyType, spawn_position: Vector2) -> EnemyBase:
 	var enemy: EnemyBase = ENEMY_SCENE.instantiate()
 	enemy.enemy_type = type
 	enemy.position = spawn_position
@@ -242,3 +246,4 @@ func _spawn_enemy(type: EnemyBase.EnemyType, spawn_position: Vector2) -> void:
 	_enemies_container.add_child(enemy)
 	enemy.apply_wave_scaling(1.0 + hp_scale_per_wave * (current_wave - 1))
 	_alive += 1
+	return enemy

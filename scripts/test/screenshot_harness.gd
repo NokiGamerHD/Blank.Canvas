@@ -500,6 +500,7 @@ func _capture_boss_demo(arena: Arena) -> void:
 	boss.position = arena.player.global_position + Vector2(BOSS_DEMO_DISTANCE, -40.0)
 	arena.enemies_container.add_child(boss)
 	boss.set_physics_process(false)
+	arena.hud.track_boss(boss)
 	await get_tree().create_timer(BOSS_DEMO_SETTLE).timeout
 	await _capture("33_chefe")
 

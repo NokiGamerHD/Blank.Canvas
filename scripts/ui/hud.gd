@@ -50,6 +50,9 @@ var _dash_slot: AbilitySlot = null
 var _controls_hint: Label = null
 var _stats_panel: StatsPanel = null
 var _screen_edges: ScreenEdges = null
+var _boss_bar: BossHealthBar = null
+var _boss_total: float = 0.0
+var _boss_empty_checks: int = 0
 var _ink_label: Label = null
 var _dash_icon_large: ImageTexture = null
 var _dash_icon_small: ImageTexture = null
@@ -67,10 +70,12 @@ func _ready() -> void:
 	_count_timer.wait_time = 0.2
 	_count_timer.timeout.connect(_refresh_enemy_count)
 	_count_timer.timeout.connect(_refresh_stats)
+	_count_timer.timeout.connect(_refresh_boss_bar)
 	add_child(_count_timer)
 	_count_timer.start()
 	_refresh_enemy_count()
 	_build_controls_hint()
+	_build_boss_bar()
 	_apply_translations()
 
 
@@ -126,6 +131,44 @@ func setup_player(player: Player) -> void:
 	abilities_row.move_child(_dash_slot, 0)
 	_dash_slot.set_pixel_icon(_dash_icon_large, DASH_COOLDOWN_OVERLAY)
 	_fit_ability_bar()
+
+
+func track_boss(boss: EnemyBase) -> void:
+	if _boss_bar == null or boss == null:
+		return
+	_boss_total = boss.max_hp
+	_boss_empty_checks = 0
+	_boss_bar.show_boss(boss.trail_color, _boss_total)
+	_refresh_boss_bar()
+
+
+func boss_bar() -> BossHealthBar:
+	return _boss_bar
+
+
+func _build_boss_bar() -> void:
+	if _boss_bar != null:
+		return
+	_boss_bar = BossHealthBar.new()
+	add_child(_boss_bar)
+	move_child(_boss_bar, 0)
+
+
+func _refresh_boss_bar() -> void:
+	if _boss_bar == null or not _boss_bar.is_showing():
+		return
+	var remaining: float = 0.0
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy: EnemyBase = node as EnemyBase
+		if enemy != null and enemy.is_boss and not enemy.is_queued_for_deletion():
+			remaining += maxf(enemy.current_hp, 0.0)
+	if remaining <= 0.0:
+		_boss_empty_checks += 1
+		if _boss_empty_checks >= 2:
+			_boss_bar.hide_boss()
+		return
+	_boss_empty_checks = 0
+	_boss_bar.update_value(remaining)
 
 
 func screen_edges() -> ScreenEdges:

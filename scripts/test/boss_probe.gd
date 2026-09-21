@@ -35,6 +35,9 @@ func _ready() -> void:
 	await _check_shard_hits_player()
 	_check_shards_stop_by_generation()
 	await _check_boss_wave()
+	_check_big_explosions()
+	await _check_explosion_shake()
+	await _check_boss_bar()
 
 	print("falhas: %d" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -143,7 +146,7 @@ func _check_aura() -> void:
 		var middle: int = image.get_width() / 2
 		ring = is_equal_approx(image.get_pixel(middle, middle).a, 0.0) \
 			and image.get_pixel(middle, 0).a > 0.9
-		wide_enough = image.get_width() * BossAura.PIXEL_SCALE > boss.collision_radius * 2.0
+		wide_enough = image.get_width() * BossAura.PIXEL_SCALE > boss.collision_radius * 3.0
 	_clear()
 	_report("chefe tem aura de anel em pixel art atras do corpo",
 		behind and pixelated and ring and wide_enough,
@@ -284,6 +287,88 @@ func _check_shards_stop_by_generation() -> void:
 	_report("so o chefe e o primeiro filhote lancam estilhacos",
 		deep_shards == 0 and first_shards > 0,
 		"geracao_3=%d geracao_1=%d" % [deep_shards, first_shards])
+
+
+func _puff_count() -> int:
+	var count: int = 0
+	for child in _arena.get_node("Effects").get_children():
+		if child.has_meta("explosion_puff"):
+			count += 1
+	return count
+
+
+func _clear_puffs() -> void:
+	for child in _arena.get_node("Effects").get_children():
+		if child.has_meta("explosion_puff"):
+			child.free()
+
+
+func _check_big_explosions() -> void:
+	_clear()
+	_clear_puffs()
+	var boss_preset: Dictionary = EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]
+	var tank_preset: Dictionary = EnemyBase.PRESETS[EnemyBase.EnemyType.TANK]
+	var boss: EnemyBase = _spawn_boss(Vector2(700.0, 0.0))
+	boss.set_physics_process(false)
+	boss._explode()
+	var puffs: int = _puff_count()
+	_clear_puffs()
+	_clear()
+	_report("explosao do chefe e bem maior que a do verde",
+		boss_preset["explosion_paint_radius"] > tank_preset["explosion_paint_radius"] * 2.0
+			and boss_preset["explosion_spatters"] > EnemyBase.EXPLOSION_SPATTERS * 2
+			and puffs == boss_preset["explosion_puffs"],
+		"tinta=%.0f (verde %.0f) respingos=%d (padrao %d) nuvens=%d" % [
+			boss_preset["explosion_paint_radius"], tank_preset["explosion_paint_radius"],
+			boss_preset["explosion_spatters"], EnemyBase.EXPLOSION_SPATTERS, puffs
+		])
+
+
+func _check_explosion_shake() -> void:
+	_clear()
+	var player: Player = _arena.player
+	player.camera.offset = Vector2.ZERO
+	var boss: EnemyBase = _spawn_boss(Vector2(700.0, 0.0))
+	boss.set_physics_process(false)
+	boss._explode()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var shaken: Vector2 = player.camera.offset
+	var whole_pixels: bool = is_equal_approx(shaken.x, roundf(shaken.x)) \
+		and is_equal_approx(shaken.y, roundf(shaken.y))
+	await _wait(0.8)
+	var settled: bool = player.camera.offset.is_zero_approx()
+	_clear()
+	_clear_puffs()
+	_report("explosao do chefe sacode a camera em pixels inteiros e volta ao lugar",
+		not shaken.is_zero_approx() and whole_pixels and settled,
+		"tremor=%s inteiro=%s voltou=%s" % [shaken, whole_pixels, settled])
+
+
+func _check_boss_bar() -> void:
+	_clear()
+	var manager: WaveManager = _arena.get_node("WaveManager") as WaveManager
+	var bar: BossHealthBar = _arena.hud.boss_bar()
+	manager._start_wave(10)
+	manager._spawn_timer.stop()
+	await _wait(0.4)
+	var showing: bool = bar != null and bar.is_showing()
+	var full: float = bar.fill_width() if bar != null else 0.0
+
+	for child in _arena.enemies_container.get_children():
+		var enemy: EnemyBase = child as EnemyBase
+		if enemy != null:
+			enemy.set_physics_process(false)
+			enemy.current_hp *= 0.4
+	await _wait(0.4)
+	var shrank: float = bar.fill_width() if bar != null else 0.0
+
+	_clear()
+	await _wait(0.7)
+	var hidden: bool = bar != null and not bar.is_showing()
+	_report("barra de vida do chefe aparece, encolhe e some no fim",
+		showing and shrank < full and shrank > 0.0 and hidden,
+		"cheia=%.0f px depois_do_dano=%.0f px sumiu=%s" % [full, shrank, hidden])
 
 
 func _check_boss_wave() -> void:

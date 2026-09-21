@@ -108,6 +108,7 @@ func _setup_hud() -> void:
 	player.health_changed.connect(hud.update_hp)
 	hud.update_hp(player.current_hp, player.max_hp)
 	wave_manager.wave_changed.connect(hud.update_wave)
+	wave_manager.boss_spawned.connect(hud.track_boss)
 	hud.setup_abilities(ability_controller)
 	hud.setup_player(player)
 	hud.setup_minimap(self)
