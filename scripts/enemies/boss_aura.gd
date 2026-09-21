@@ -2,8 +2,8 @@ class_name BossAura
 extends Sprite2D
 
 const PIXEL_SCALE: int = 3
-const RING_THICKNESS: int = 2
-const RADIUS_FACTOR: float = 1.35
+const RING_THICKNESS: int = 3
+const RADIUS_FACTOR: float = 1.9
 const MIN_ALPHA: float = 0.3
 const MAX_ALPHA: float = 0.72
 const PULSE_TIME: float = 0.75

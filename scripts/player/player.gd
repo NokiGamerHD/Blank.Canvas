@@ -12,6 +12,8 @@ const GHOST_INTERVAL: float = 0.03
 const GHOST_FADE: float = 0.22
 const GHOST_ALPHA: float = 0.5
 const MIN_DASH_COOLDOWN: float = 0.35
+const SHAKE_DECAY: float = 26.0
+const MAX_SHAKE: float = 9.0
 const FRESH_PAINT_SPEED: float = 0.58
 const MIXED_PAINT_SPEED: float = 1.45
 const PAINT_PUFF_PATTERN: Array[String] = [
@@ -69,6 +71,7 @@ var _footing: PaintCanvas.Footing = PaintCanvas.Footing.CLEAN
 var _footing_speed: float = 1.0
 var _footing_color: Color = Color(0, 0, 0, 0)
 var _puff_timer: float = 0.0
+var _shake_strength: float = 0.0
 
 static var _puff_textures: Dictionary = {}
 
@@ -81,6 +84,22 @@ func _ready() -> void:
 	add_to_group("player")
 	current_hp = max_hp
 	_apply_character_texture()
+
+
+func shake(strength: float) -> void:
+	_shake_strength = clampf(maxf(_shake_strength, strength), 0.0, MAX_SHAKE)
+
+
+func _process(delta: float) -> void:
+	if _shake_strength <= 0.0:
+		if camera.offset != Vector2.ZERO:
+			camera.offset = Vector2.ZERO
+		return
+	_shake_strength = maxf(_shake_strength - SHAKE_DECAY * delta, 0.0)
+	camera.offset = Vector2(
+		roundf(randf_range(-_shake_strength, _shake_strength)),
+		roundf(randf_range(-_shake_strength, _shake_strength))
+	)
 
 
 func _physics_process(delta: float) -> void:

@@ -77,7 +77,8 @@ const PRESETS: Dictionary = {
 		"shape": "square", "texture_half_size": 26, "color": Color("b10f73"),
 		"behavior": Behavior.CHASE,
 		"split_generations": 4, "split_scale": 0.72,
-		"explosion_radius": 120.0, "explosion_damage": 18.0, "explosion_paint_radius": 70.0,
+		"explosion_radius": 120.0, "explosion_damage": 18.0, "explosion_paint_radius": 105.0,
+		"explosion_spatters": 16, "explosion_puffs": 3, "explosion_shake": 7.0,
 		"boss": true, "shard_count": 14, "shard_generations": 1,
 	},
 	EnemyType.STALKER: {
@@ -131,6 +132,8 @@ const EXPLOSION_PUFF_SCALE: float = 2.6
 const EXPLOSION_PUFF_TIME: float = 0.26
 const EXPLOSION_PUFF_ALPHA: float = 0.7
 const EXPLOSION_SPATTERS: int = 5
+const EXPLOSION_PUFF_SPREAD: float = 0.45
+const SHAKE_GENERATION_FALLOFF: float = 0.55
 const SHARD_COUNT_STEP: int = 5
 const MIN_SHARD_COUNT: int = 6
 const RECOLOR_MIN_SATURATION: float = 0.15
@@ -184,6 +187,9 @@ var ink_drop_chance: float = 0.0
 var is_boss: bool = false
 var shard_count: int = 0
 var shard_generations: int = 0
+var explosion_spatters: int = EXPLOSION_SPATTERS
+var explosion_puffs: int = 1
+var explosion_shake: float = 0.0
 
 @export var generation: int = 0
 
@@ -246,6 +252,9 @@ func _apply_preset() -> void:
 	is_boss = preset.get("boss", false)
 	shard_count = preset.get("shard_count", 0)
 	shard_generations = preset.get("shard_generations", 0)
+	explosion_spatters = preset.get("explosion_spatters", EXPLOSION_SPATTERS)
+	explosion_puffs = preset.get("explosion_puffs", 1)
+	explosion_shake = preset.get("explosion_shake", 0.0) * pow(SHAKE_GENERATION_FALLOFF, generation)
 
 	speed = preset["speed"] * randf_range(0.9, 1.1)
 
@@ -763,7 +772,7 @@ func _explode() -> void:
 	var canvas: PaintCanvas = _get_paint_canvas()
 	if canvas != null and explosion_paint_radius > 0.0:
 		canvas.paint_circle(global_position, explosion_paint_radius, trail_color)
-		for i in EXPLOSION_SPATTERS:
+		for i in explosion_spatters:
 			var offset: Vector2 = Vector2.from_angle(randf() * TAU) \
 				* randf_range(explosion_paint_radius * 0.7, explosion_paint_radius * 1.7)
 			canvas.paint_circle(
@@ -777,13 +786,16 @@ func _explode() -> void:
 			and global_position.distance_to(player.global_position) <= explosion_radius:
 		player.take_damage(explosion_damage)
 		player.apply_knockback(global_position)
+	if player != null and explosion_shake > 0.0:
+		player.shake(explosion_shake)
 
 	AudioManager.play_enemy_explode()
-	_spawn_explosion_puff()
+	for index in explosion_puffs:
+		_spawn_explosion_puff(index > 0)
 	_spawn_boss_shards()
 
 
-func _spawn_explosion_puff() -> void:
+func _spawn_explosion_puff(scattered: bool = false) -> void:
 	var container: Node = get_tree().get_first_node_in_group("effects_container")
 	if container == null:
 		return
@@ -796,8 +808,12 @@ func _spawn_explosion_puff() -> void:
 	puff.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	puff.scale = sprite.scale
 	puff.modulate = Color(1.0, 1.0, 1.0, EXPLOSION_PUFF_ALPHA)
+	puff.set_meta("explosion_puff", true)
 	container.add_child(puff)
 	puff.global_position = global_position
+	if scattered:
+		puff.global_position += Vector2.from_angle(randf() * TAU) \
+			* randf_range(explosion_radius * 0.2, explosion_radius * EXPLOSION_PUFF_SPREAD)
 
 	var tween: Tween = puff.create_tween()
 	tween.set_parallel(true)
