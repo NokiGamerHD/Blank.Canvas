@@ -120,7 +120,7 @@ func _fire_past_enemy(shot_type: int) -> Dictionary:
 	_reset()
 	var enemy: EnemyBase = load(ENEMY_SCENE).instantiate()
 	enemy.enemy_type = EnemyBase.EnemyType.COMMON
-	enemy.position = PLAYER_SPOT + Vector2(420.0, 110.0)
+	enemy.position = PLAYER_SPOT + Vector2(300.0, 90.0)
 	_arena.enemies_container.add_child(enemy)
 	enemy.set_physics_process(false)
 	var starting_hp: float = enemy.current_hp
@@ -219,10 +219,10 @@ func _check_ranges() -> void:
 	var charge: float = await _measure_range(AbilityData.ShotType.CHARGE)
 	var rapid: float = await _measure_range(AbilityData.ShotType.RAPID)
 	var tolerance: float = 40.0
-	var passed: bool = absf(standard - 700.0) < tolerance and absf(charge - 380.0) < tolerance \
+	var passed: bool = absf(standard - 400.0) < tolerance and absf(charge - 380.0) < tolerance \
 		and absf(rapid - 1100.0) < tolerance
 	_report("alcance de cada tipo", passed,
-		"padrao=%.0f (700) carregado=%.0f (380) rapido=%.0f (1100)" % [standard, charge, rapid])
+		"padrao=%.0f (400) carregado=%.0f (380) rapido=%.0f (1100)" % [standard, charge, rapid])
 
 
 func _count_shots(shot_type: int, seconds: float) -> int:

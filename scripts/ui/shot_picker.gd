@@ -23,7 +23,7 @@ const SHOT_INFO_KEYS: Dictionary = {
 }
 
 const SHOT_STATS: Dictionary = {
-	AbilityData.ShotType.STANDARD: [3, 3, 3],
+	AbilityData.ShotType.STANDARD: [3, 2, 3],
 	AbilityData.ShotType.CHARGE: [5, 1, 2],
 	AbilityData.ShotType.RAPID: [1, 5, 5],
 }

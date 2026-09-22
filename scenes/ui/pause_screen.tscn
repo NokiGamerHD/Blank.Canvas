@@ -53,6 +53,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 11
 text = "RESTART"
 
+[node name="SettingsButton" type="Button" parent="Dim/CenterContainer/Panel/Content"]
+custom_minimum_size = Vector2(220, 34)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "SETTINGS"
+
 [node name="MenuButton" type="Button" parent="Dim/CenterContainer/Panel/Content"]
 custom_minimum_size = Vector2(220, 34)
 layout_mode = 2

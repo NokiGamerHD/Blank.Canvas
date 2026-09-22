@@ -51,6 +51,7 @@ var _controls_hint: Label = null
 var _stats_panel: StatsPanel = null
 var _screen_edges: ScreenEdges = null
 var _boss_bar: BossHealthBar = null
+var _wave_banner: WaveBanner = null
 var _boss_total: float = 0.0
 var _boss_empty_checks: int = 0
 var _ink_label: Label = null
@@ -76,6 +77,7 @@ func _ready() -> void:
 	_refresh_enemy_count()
 	_build_controls_hint()
 	_build_boss_bar()
+	_build_wave_banner()
 	_apply_translations()
 
 
@@ -136,7 +138,7 @@ func setup_player(player: Player) -> void:
 func track_boss(boss: EnemyBase) -> void:
 	if _boss_bar == null or boss == null:
 		return
-	_boss_total = boss.max_hp
+	_boss_total = boss.remaining_tree_hp()
 	_boss_empty_checks = 0
 	_boss_bar.show_boss(boss.trail_color, _boss_total)
 	_refresh_boss_bar()
@@ -144,6 +146,26 @@ func track_boss(boss: EnemyBase) -> void:
 
 func boss_bar() -> BossHealthBar:
 	return _boss_bar
+
+
+func announce_wave(wave: int, boss: bool) -> void:
+	if _wave_banner == null:
+		return
+	if boss:
+		_wave_banner.announce_boss()
+		return
+	_wave_banner.announce_wave(wave)
+
+
+func wave_banner() -> WaveBanner:
+	return _wave_banner
+
+
+func _build_wave_banner() -> void:
+	if _wave_banner != null:
+		return
+	_wave_banner = WaveBanner.new()
+	add_child(_wave_banner)
 
 
 func _build_boss_bar() -> void:
@@ -161,7 +183,7 @@ func _refresh_boss_bar() -> void:
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy: EnemyBase = node as EnemyBase
 		if enemy != null and enemy.is_boss and not enemy.is_queued_for_deletion():
-			remaining += maxf(enemy.current_hp, 0.0)
+			remaining += enemy.remaining_tree_hp()
 	if remaining <= 0.0:
 		_boss_empty_checks += 1
 		if _boss_empty_checks >= 2:

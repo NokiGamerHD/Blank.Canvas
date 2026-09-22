@@ -29,6 +29,7 @@ func _ready() -> void:
 	_check_recolor()
 	await _check_aura()
 	await _check_split_tree()
+	await _check_hit_ladder()
 	await _check_shards()
 	_check_shards_are_wide()
 	await _check_shard_reaches_the_wall()
@@ -38,6 +39,11 @@ func _ready() -> void:
 	_check_big_explosions()
 	await _check_explosion_shake()
 	await _check_boss_bar()
+	await _check_boss_bar_only_drops()
+	await _check_divisions_shoot_orbs()
+	await _check_orb_hits_player()
+	await _check_orb_paints_thin_trail()
+	await _check_orbs_vanish_at_wave_end()
 
 	print("falhas: %d" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -85,17 +91,22 @@ func _living_shards() -> Array[BossShard]:
 func _check_preset() -> void:
 	var boss: Dictionary = EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]
 	var tank: Dictionary = EnemyBase.PRESETS[EnemyBase.EnemyType.TANK]
+	var ladder: Array = boss.get("child_hp", [])
+	var shrinking: bool = ladder.size() == boss["split_generations"] \
+		and not ladder.is_empty() and ladder[0] < boss["max_hp"]
+	for index in range(1, ladder.size()):
+		shrinking = shrinking and ladder[index] < ladder[index - 1]
 	_report("chefe e o quadrado maior, de outra cor e que divide muito mais",
 		boss["sheet"] == tank["sheet"]
 			and boss["sprite_scale"] > tank["sprite_scale"] * 1.5
 			and boss["collision_radius"] > tank["collision_radius"] * 1.5
-			and boss["max_hp"] > tank["max_hp"] * 10.0
+			and boss["max_hp"] > tank["max_hp"] and shrinking
 			and not boss["trail_color"].is_equal_approx(tank["trail_color"])
 			and boss["split_generations"] > tank["split_generations"]
 			and boss.get("boss", false) and boss.get("shard_count", 0) >= 8,
-		"escala=%.2f (tanque %.2f) raio=%.0f vida=%.0f cor=%s geracoes=%d estilhacos=%d" % [
+		"escala=%.2f (tanque %.2f) raio=%.0f vida=%.0f filhotes=%s cor=%s geracoes=%d estilhacos=%d" % [
 			boss["sprite_scale"], tank["sprite_scale"], boss["collision_radius"], boss["max_hp"],
-			boss["trail_color"].to_html(false), boss["split_generations"], boss["shard_count"]
+			str(ladder), boss["trail_color"].to_html(false), boss["split_generations"], boss["shard_count"]
 		])
 
 
@@ -182,6 +193,40 @@ func _check_split_tree() -> void:
 	_report("a arvore do chefe fecha em %d inimigos e esvazia" % expected,
 		_spawned == expected and _died == expected,
 		"nasceram=%d morreram=%d sobraram=%d" % [_spawned, _died, _arena.enemies_container.get_child_count()])
+
+
+func _wave_scale(wave: int) -> float:
+	var manager: WaveManager = _arena.get_node("WaveManager") as WaveManager
+	return 1.0 + manager.hp_scale_per_wave * float(wave - 1)
+
+
+func _check_hit_ladder() -> void:
+	_clear()
+	var part: EnemyBase = _spawn_boss(Vector2(520.0, 0.0))
+	part.set_physics_process(false)
+	part.apply_wave_scaling(_wave_scale(10))
+	var hits: Array[int] = []
+	while part != null:
+		var children: Array[EnemyBase] = []
+		part.split_into.connect(func(child: EnemyBase) -> void: children.append(child))
+		var count: int = 0
+		while not part._is_dying and count < 200:
+			part.take_damage(BASE_SHOT_DAMAGE, false)
+			count += 1
+		hits.append(count)
+		await get_tree().process_frame
+		part = children[0] if not children.is_empty() else null
+		if part != null:
+			part.set_physics_process(false)
+
+	var generations: int = EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]["split_generations"]
+	var fewer_each_time: bool = hits.size() == generations + 1
+	for index in range(1, hits.size()):
+		fewer_each_time = fewer_each_time and hits[index] < hits[index - 1]
+	_clear()
+	_report("chefe aguenta varios tiros para dividir, e cada divisao aguenta menos ate um tiro",
+		fewer_each_time and hits[0] >= 8 and hits.back() == 1,
+		"tiros de %.0f por geracao na wave 10=%s" % [BASE_SHOT_DAMAGE, str(hits)])
 
 
 func _track(enemy: EnemyBase) -> void:
@@ -369,6 +414,154 @@ func _check_boss_bar() -> void:
 	_report("barra de vida do chefe aparece, encolhe e some no fim",
 		showing and shrank < full and shrank > 0.0 and hidden,
 		"cheia=%.0f px depois_do_dano=%.0f px sumiu=%s" % [full, shrank, hidden])
+
+
+func _check_boss_bar_only_drops() -> void:
+	_clear()
+	var preset: Dictionary = EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]
+	var scale: float = _wave_scale(10)
+	var expected_total: float = preset["max_hp"]
+	var parts: int = 2
+	for hp in preset["child_hp"]:
+		expected_total += parts * hp
+		parts *= 2
+	expected_total *= scale
+
+	var boss: EnemyBase = _spawn_boss(Vector2(520.0, 0.0))
+	boss.set_physics_process(false)
+	boss.apply_wave_scaling(scale)
+	var bar: BossHealthBar = _arena.hud.boss_bar()
+	_arena.hud.track_boss(boss)
+	var measured_total: float = boss.remaining_tree_hp()
+	var total_ok: bool = absf(measured_total - expected_total) < 0.5
+	await _wait(0.3)
+
+	var widths: Array[float] = [bar.fill_width()]
+	var rises: int = 0
+	var elapsed: float = 0.0
+	while elapsed < TREE_SECONDS:
+		for child in _arena.enemies_container.get_children():
+			var enemy: EnemyBase = child as EnemyBase
+			if enemy != null and not enemy.is_queued_for_deletion():
+				enemy.set_physics_process(false)
+				enemy.take_damage(BASE_SHOT_DAMAGE, false)
+		await _wait(HIT_INTERVAL)
+		elapsed += HIT_INTERVAL
+		var width: float = bar.fill_width()
+		if width > widths.back() + 0.5:
+			rises += 1
+		widths.append(width)
+		if _arena.enemies_container.get_child_count() == 0:
+			break
+
+	await _wait(0.7)
+	var hidden: bool = not bar.is_showing()
+	_clear()
+	_report("barra do chefe soma a arvore inteira e so desce, mesmo quando ele divide",
+		total_ok and rises == 0 and widths[0] > widths[widths.size() / 2] and hidden,
+		"vida_total=%.0f (esperado %.0f) subidas=%d cheia=%.0f meio=%.0f sumiu=%s" % [
+			measured_total, expected_total, rises,
+			widths[0], widths[widths.size() / 2], hidden
+		])
+
+
+func _living_orbs() -> Array[BossOrb]:
+	var found: Array[BossOrb] = []
+	for child in _arena.projectiles_container.get_children():
+		var orb: BossOrb = child as BossOrb
+		if orb != null and not orb.is_spent() and not orb.is_queued_for_deletion():
+			found.append(orb)
+	return found
+
+
+func _check_divisions_shoot_orbs() -> void:
+	_clear()
+	var launched: Array[Dictionary] = []
+	var record: Callable = func(node: Node) -> void:
+		var orb: BossOrb = node as BossOrb
+		if orb != null:
+			launched.append({"from": orb.position, "direction": orb.direction})
+	_arena.projectiles_container.child_entered_tree.connect(record)
+
+	var whole: EnemyBase = _spawn_boss(Vector2(320.0, 0.0))
+	var division: EnemyBase = _spawn_boss(Vector2(-320.0, 0.0), 1, 5000.0)
+	await _wait(2.6)
+	_arena.projectiles_container.child_entered_tree.disconnect(record)
+
+	var from_division: int = 0
+	var from_whole: int = 0
+	var aimed: bool = true
+	for shot in launched:
+		if shot["from"].x < PLAYER_SPOT.x:
+			from_division += 1
+			var to_player: Vector2 = (PLAYER_SPOT - shot["from"]).normalized()
+			aimed = aimed and shot["direction"].dot(to_player) > 0.97
+		else:
+			from_whole += 1
+	var player: Player = _arena.player
+	var slow: bool = BossOrb.SPEED >= 280.0 and BossOrb.SPEED < player.max_speed
+	whole.free()
+	division.free()
+	_clear()
+	_report("divisoes do chefe atiram bolas mirando o jogador, rapidas mas abaixo do jogador andando",
+		from_division >= 1 and from_whole == 0 and aimed and slow,
+		"da_divisao=%d do_chefe_inteiro=%d miradas=%s velocidade=%.0f (jogador %.0f)" % [
+			from_division, from_whole, aimed, BossOrb.SPEED, player.max_speed
+		])
+
+
+func _check_orb_hits_player() -> void:
+	_clear()
+	var player: Player = _arena.player
+	var before: float = player.current_hp
+	var orb: BossOrb = BossOrb.new()
+	orb.setup(Vector2.RIGHT, EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]["trail_color"])
+	orb.position = PLAYER_SPOT - Vector2(70.0, 0.0)
+	_arena.projectiles_container.add_child(orb)
+	await _wait(0.6)
+	var hurt: float = before - player.current_hp
+	var gone: bool = not is_instance_valid(orb) or orb.is_spent()
+	_clear()
+	_report("bola machuca o jogador e se gasta",
+		gone and is_equal_approx(hurt, BossOrb.DAMAGE),
+		"dano=%.0f (esperado %.0f) sumiu=%s" % [hurt, BossOrb.DAMAGE, gone])
+
+
+func _check_orb_paints_thin_trail() -> void:
+	_clear()
+	_arena.paint_canvas.add_to_group("paint_canvas")
+	var before: float = _arena.paint_canvas.coverage()
+	var orb: BossOrb = BossOrb.new()
+	orb.setup(Vector2.UP, EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]["trail_color"],
+		Rect2(Vector2.ZERO, _arena.arena_size))
+	orb.position = PLAYER_SPOT + Vector2(300.0, 200.0)
+	_arena.projectiles_container.add_child(orb)
+	await _wait(0.6)
+	var after: float = _arena.paint_canvas.coverage()
+	_arena.paint_canvas.remove_from_group("paint_canvas")
+	_clear()
+	var thin: bool = BossOrb.TRAIL_RADIUS * 2.0 < BossShard.TRAIL_RADIUS
+	_report("bola pinta um rastro fino, mais fino que o do estilhaco", after > before and thin,
+		"pintado antes=%.5f depois=%.5f raio=%.0f (estilhaco %.0f)" % [
+			before, after, BossOrb.TRAIL_RADIUS, BossShard.TRAIL_RADIUS
+		])
+
+
+func _check_orbs_vanish_at_wave_end() -> void:
+	_clear()
+	var orb: BossOrb = BossOrb.new()
+	orb.setup(Vector2.UP, EnemyBase.PRESETS[EnemyBase.EnemyType.BOSS]["trail_color"],
+		Rect2(Vector2.ZERO, _arena.arena_size))
+	orb.position = PLAYER_SPOT + Vector2(0.0, 500.0)
+	_arena.projectiles_container.add_child(orb)
+	await get_tree().process_frame
+	var flying: bool = _living_orbs().size() == 1
+	_arena._on_wave_completed(10)
+	await _wait(0.45)
+	var gone: bool = not is_instance_valid(orb)
+	_clear()
+	_report("bolas que sobraram somem quando a wave acaba", flying and gone,
+		"voando_antes=%s sumiu=%s" % [flying, gone])
 
 
 func _check_boss_wave() -> void:

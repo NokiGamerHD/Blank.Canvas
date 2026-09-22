@@ -175,18 +175,46 @@ func _check_wave_end_attracts() -> void:
 
 func _check_progression_collects() -> void:
 	_clear()
-	_drop_at(Vector2(800.0, 0.0))
-	_drop_at(Vector2(-800.0, 0.0))
+	_drop_at(Vector2(600.0, 0.0))
+	_drop_at(Vector2(-600.0, 0.0))
 	await get_tree().process_frame
 	_arena._on_progression_due(5)
-	var immediate: bool = _player.ink == 2
-	var shown: bool = _screen.visible and _screen._ink_label.text == "2"
 	await get_tree().process_frame
+	var waits_for_drops: bool = not _screen.visible and _player.ink == 0
+	var flying: bool = true
+	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
+		flying = flying and (drop as PaintDrop).is_flying()
+	var elapsed: float = await _wait_for_shop(3.0)
+	var shown: bool = _screen.visible and _screen._ink_label.text == "2" and _player.ink == 2
 	var none_left: bool = get_tree().get_nodes_in_group(PaintDrop.GROUP).is_empty()
 	_screen.close()
-	_report("tela de upgrade recolhe as gotas antes de abrir",
-		immediate and shown and none_left,
-		"na_hora=%s saldo_na_tela=%s nenhuma_sobrou=%s" % [immediate, _screen._ink_label.text, none_left])
+	_report("tela de upgrade espera as gotas chegarem voando e abre com o saldo todo",
+		waits_for_drops and flying and shown and none_left and elapsed < _arena.DROP_GATHER_TIMEOUT + 0.2,
+		"esperou=%s voando=%s saldo_na_tela=%s nenhuma_sobrou=%s abriu_em=%.2fs" % [
+			waits_for_drops, flying, _screen._ink_label.text, none_left, elapsed])
+
+	_clear()
+	_drop_at(Vector2(600.0, 0.0))
+	await get_tree().process_frame
+	_arena._on_progression_due(5)
+	get_tree().paused = true
+	await get_tree().create_timer(_arena.DROP_GATHER_TIMEOUT + 1.0).timeout
+	var stayed_closed: bool = not _screen.visible
+	get_tree().paused = false
+	var after_pause: float = await _wait_for_shop(3.0)
+	var opened_after: bool = _screen.visible and _player.ink == 1
+	_screen.close()
+	_report("com o jogo pausado a loja espera, e abre quando volta",
+		stayed_closed and opened_after,
+		"fechada_na_pausa=%s abriu_depois=%s em=%.2fs" % [stayed_closed, opened_after, after_pause])
+
+
+func _wait_for_shop(limit: float) -> float:
+	var elapsed: float = 0.0
+	while not _screen.visible and elapsed < limit:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+	return elapsed
 
 
 func _check_reroll() -> void:

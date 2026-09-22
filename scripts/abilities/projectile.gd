@@ -14,7 +14,7 @@ const BLAST_PAINT_FRACTION: float = 0.45
 
 @export var damage: float = 20.0
 
-@export var max_distance: float = 700.0
+@export var max_distance: float = 400.0
 
 @export var paint_radius: float = 9.0
 
