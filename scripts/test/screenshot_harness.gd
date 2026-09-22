@@ -28,6 +28,22 @@ const SHOP_DEMO_SHORT_INK: int = 7
 const BOSS_DEMO_DISTANCE: float = 230.0
 const BOSS_DEMO_SETTLE: float = 0.6
 const BOSS_SHARD_FLIGHT: float = 0.45
+const ORB_DEMO_DISTANCE: float = 240.0
+const ORB_DEMO_GENERATION: int = 2
+const ORB_DEMO_VOLLEYS: int = 3
+const ORB_DEMO_GAP: float = 0.55
+const WAVE_BANNER_DEMO: int = 7
+const BOSS_BANNER_DEMO: int = 10
+const BANNER_DEMO_DELAY: float = 0.3
+const BANNER_DEMO_CLEAR: float = 1.8
+const FUSION_DEMO_DISTANCE: float = 190.0
+const FUSION_DEMO_WALK: float = 0.7
+const FUSION_DEMO_PAIRS: Array[Array] = [
+	[EnemyBase.EnemyType.STALKER, EnemyBase.EnemyType.STALKER],
+	[EnemyBase.EnemyType.COMMON, EnemyBase.EnemyType.FAST],
+	[EnemyBase.EnemyType.FAST, EnemyBase.EnemyType.STALKER],
+	[EnemyBase.EnemyType.TANK, EnemyBase.EnemyType.COMMON],
+]
 const MIX_DEMO_OFFSET: Vector2 = Vector2(0.0, -150.0)
 const MIX_DEMO_HALF: float = 120.0
 const MIX_DEMO_RADIUS: float = 10.0
@@ -122,16 +138,13 @@ func _capture_main_menu() -> void:
 		return
 	await _capture("01_menu")
 
-	menu.get_node("AudioPanel").visible = true
-	await _capture("02_menu_som")
-	menu.get_node("AudioPanel").visible = false
-
-	var was_muted: bool = AudioManager.muted
-	AudioManager.muted = true
-	AudioManager.audio_settings_changed.emit()
-	await _capture("03_menu_mudo")
-	AudioManager.muted = was_muted
-	AudioManager.audio_settings_changed.emit()
+	var settings: SettingsScreen = menu._settings_screen
+	settings.open()
+	await _capture("02_opcoes_geral")
+	settings._show_page(false)
+	await _capture("03_opcoes_controles")
+	settings._show_page(true)
+	settings.close()
 
 	await _clear_scene(menu)
 
@@ -168,6 +181,16 @@ func _capture_arena() -> void:
 	await _capture("05_arena_pausa")
 	arena.get_node("PauseScreen").close()
 
+	arena.wave_manager.wave_changed.emit(WAVE_BANNER_DEMO)
+	await get_tree().create_timer(BANNER_DEMO_DELAY).timeout
+	await _capture_immediately("37_aviso_de_wave")
+	await get_tree().create_timer(BANNER_DEMO_CLEAR).timeout
+	arena.wave_manager.wave_changed.emit(BOSS_BANNER_DEMO)
+	await get_tree().create_timer(BANNER_DEMO_DELAY).timeout
+	await _capture_immediately("38_aviso_de_chefe")
+	await get_tree().create_timer(BANNER_DEMO_CLEAR).timeout
+	arena.hud.update_wave(1)
+
 	var controller: AbilityController = arena.get_node("Player/AbilityController")
 	arena.player.add_ink(SHOP_DEMO_INK)
 	arena.get_node("ProgressionScreen").open(5, controller.get_abilities(), arena.player)
@@ -185,6 +208,7 @@ func _capture_arena() -> void:
 	await _capture_footing_demo(arena)
 	await _capture_hurt_edges_demo(arena)
 	await _capture_boss_demo(arena)
+	await _capture_fusion_demo(arena)
 
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
@@ -490,6 +514,39 @@ func _capture_hurt_edges_demo(arena: Arena) -> void:
 	_keep_player_alive(arena)
 
 
+func _capture_fusion_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var scene: PackedScene = load(INDICATOR_DEMO_SCENE)
+	for index in FUSION_DEMO_PAIRS.size():
+		var pair: Array = FUSION_DEMO_PAIRS[index]
+		var spot: Vector2 = arena.player.global_position \
+			+ Vector2.from_angle(PI * 0.25 + TAU * float(index) / FUSION_DEMO_PAIRS.size()) * FUSION_DEMO_DISTANCE
+		var members: Array[EnemyBase] = []
+		for offset in [-14.0, 14.0]:
+			var enemy: EnemyBase = scene.instantiate()
+			enemy.enemy_type = pair[members.size()]
+			enemy.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+			enemy.position = spot + Vector2(offset, 0.0)
+			arena.enemies_container.add_child(enemy)
+			enemy.fusion_chance = 0.0
+			members.append(enemy)
+		var fused: EnemyBase = members[0].fuse_with(members[1])
+		if index == FUSION_DEMO_PAIRS.size() - 1:
+			var third: EnemyBase = scene.instantiate()
+			third.enemy_type = pair[1]
+			third.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+			third.position = spot + Vector2(28.0, 0.0)
+			arena.enemies_container.add_child(third)
+			third.fusion_chance = 0.0
+			fused.fuse_with(third)
+	await get_tree().create_timer(FUSION_DEMO_WALK).timeout
+	await _capture_immediately("36_fusoes")
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	_keep_player_alive(arena)
+
+
 func _capture_boss_demo(arena: Arena) -> void:
 	for child in arena.enemies_container.get_children():
 		child.queue_free()
@@ -507,6 +564,28 @@ func _capture_boss_demo(arena: Arena) -> void:
 	boss.take_damage(1.0e9, false)
 	await get_tree().create_timer(BOSS_SHARD_FLIGHT).timeout
 	await _capture_immediately("34_estilhacos_do_chefe")
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	for child in arena.projectiles_container.get_children():
+		child.queue_free()
+	_keep_player_alive(arena)
+
+	var divisions: Array[EnemyBase] = []
+	for index in 3:
+		var division: EnemyBase = scene.instantiate()
+		division.enemy_type = EnemyBase.EnemyType.BOSS
+		division.generation = ORB_DEMO_GENERATION
+		division.set_arena_bounds(Rect2(Vector2.ZERO, arena.arena_size))
+		division.position = arena.player.global_position \
+			+ Vector2.from_angle(-PI * 0.5 + TAU * float(index) / 3.0) * ORB_DEMO_DISTANCE
+		arena.enemies_container.add_child(division)
+		division.set_physics_process(false)
+		divisions.append(division)
+	for volley in ORB_DEMO_VOLLEYS:
+		for division in divisions:
+			division._shoot_orb(arena.player)
+		await get_tree().create_timer(ORB_DEMO_GAP).timeout
+	await _capture_immediately("35_bolas_das_divisoes")
 	for child in arena.enemies_container.get_children():
 		child.queue_free()
 	for child in arena.projectiles_container.get_children():

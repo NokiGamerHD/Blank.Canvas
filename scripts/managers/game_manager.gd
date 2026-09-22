@@ -1,9 +1,11 @@
 extends Node
 
+signal settings_changed
+
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "2.9.0"
+const VERSION: String = "3.1.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -26,6 +28,15 @@ const BEST_WAVE_KEY: String = "best_wave"
 const PALETTE_SECTION: String = "palette"
 const CUSTOM_COLORS_KEY: String = "custom_colors"
 const MAX_CUSTOM_COLORS: int = 10
+const DISPLAY_SECTION: String = "display"
+const FULLSCREEN_KEY: String = "fullscreen"
+const GAMEPLAY_SECTION: String = "gameplay"
+const SCREEN_SHAKE_KEY: String = "screen_shake"
+const DAMAGE_NUMBERS_KEY: String = "damage_numbers"
+const CONTROLS_SECTION: String = "controls"
+const REBINDABLE_ACTIONS: Array[String] = [
+	"move_up", "move_down", "move_left", "move_right", "fire", "dash",
+]
 
 
 var character_image: Image = null
@@ -47,11 +58,22 @@ var last_run_was_record: bool = false
 
 var custom_colors: PackedColorArray = PackedColorArray()
 
+var fullscreen: bool = false
+
+var screen_shake: bool = true
+
+var damage_numbers: bool = true
+
+var _default_events: Dictionary = {}
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_progress()
 	_load_custom_colors()
+	_store_default_events()
+	_load_preferences()
+	_load_controls()
 
 
 func _input(event: InputEvent) -> void:
@@ -60,11 +82,148 @@ func _input(event: InputEvent) -> void:
 
 
 func toggle_fullscreen() -> void:
+	set_fullscreen(not is_fullscreen())
+
+
+func is_fullscreen() -> bool:
 	var mode: int = DisplayServer.window_get_mode()
-	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	else:
+	return mode == DisplayServer.WINDOW_MODE_FULLSCREEN \
+		or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+
+
+func set_fullscreen(value: bool) -> void:
+	fullscreen = value
+	DisplayServer.window_set_mode(
+		DisplayServer.WINDOW_MODE_FULLSCREEN if value else DisplayServer.WINDOW_MODE_WINDOWED)
+	_save_preferences()
+	settings_changed.emit()
+
+
+func set_screen_shake(value: bool) -> void:
+	screen_shake = value
+	_save_preferences()
+	settings_changed.emit()
+
+
+func set_damage_numbers(value: bool) -> void:
+	damage_numbers = value
+	_save_preferences()
+	settings_changed.emit()
+
+
+func _load_preferences() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	if settings.load(SETTINGS_PATH) != OK:
+		return
+	screen_shake = bool(settings.get_value(GAMEPLAY_SECTION, SCREEN_SHAKE_KEY, true))
+	damage_numbers = bool(settings.get_value(GAMEPLAY_SECTION, DAMAGE_NUMBERS_KEY, true))
+	fullscreen = bool(settings.get_value(DISPLAY_SECTION, FULLSCREEN_KEY, false))
+	if fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _save_preferences() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	settings.load(SETTINGS_PATH)
+	settings.set_value(GAMEPLAY_SECTION, SCREEN_SHAKE_KEY, screen_shake)
+	settings.set_value(GAMEPLAY_SECTION, DAMAGE_NUMBERS_KEY, damage_numbers)
+	settings.set_value(DISPLAY_SECTION, FULLSCREEN_KEY, fullscreen)
+	var save_error: int = settings.save(SETTINGS_PATH)
+	if save_error != OK:
+		push_warning("[GameManager] Não foi possível salvar as preferências (erro %d)." % save_error)
+
+
+func _store_default_events() -> void:
+	for action in REBINDABLE_ACTIONS:
+		if InputMap.has_action(action):
+			_default_events[action] = InputMap.action_get_events(action).duplicate()
+
+
+func rebind_action(action: String, event: InputEvent) -> bool:
+	if not REBINDABLE_ACTIONS.has(action) or not InputMap.has_action(action):
+		push_warning("[GameManager] Ação desconhecida para remapear: %s." % action)
+		return false
+	if not (event is InputEventKey or event is InputEventMouseButton):
+		return false
+	InputMap.action_erase_events(action)
+	InputMap.action_add_event(action, event)
+	_save_controls()
+	settings_changed.emit()
+	return true
+
+
+func reset_controls() -> void:
+	for action in REBINDABLE_ACTIONS:
+		if not _default_events.has(action):
+			continue
+		InputMap.action_erase_events(action)
+		for event in _default_events[action]:
+			InputMap.action_add_event(action, event)
+	_save_controls()
+	settings_changed.emit()
+
+
+func action_label(action: String) -> String:
+	if not InputMap.has_action(action):
+		return "-"
+	for event in InputMap.action_get_events(action):
+		if event is InputEventKey:
+			var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+			return OS.get_keycode_string(code).to_upper()
+		if event is InputEventMouseButton:
+			return LocalizationManager.text("settings.mouse_button", [event.button_index])
+	return "-"
+
+
+func _event_to_text(event: InputEvent) -> String:
+	if event is InputEventKey:
+		var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+		return "key:%d" % code
+	if event is InputEventMouseButton:
+		return "mouse:%d" % event.button_index
+	return ""
+
+
+func _event_from_text(description: String) -> InputEvent:
+	var parts: PackedStringArray = description.split(":")
+	if parts.size() != 2 or not parts[1].is_valid_int():
+		return null
+	if parts[0] == "key":
+		var key: InputEventKey = InputEventKey.new()
+		key.physical_keycode = int(parts[1])
+		return key
+	if parts[0] == "mouse":
+		var button: InputEventMouseButton = InputEventMouseButton.new()
+		button.button_index = int(parts[1])
+		return button
+	return null
+
+
+func _load_controls() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	if settings.load(SETTINGS_PATH) != OK:
+		return
+	for action in REBINDABLE_ACTIONS:
+		var description: String = str(settings.get_value(CONTROLS_SECTION, action, ""))
+		if description.is_empty() or not InputMap.has_action(action):
+			continue
+		var event: InputEvent = _event_from_text(description)
+		if event == null:
+			push_warning("[GameManager] Controle salvo em formato inesperado (%s), usando o padrão." % description)
+			continue
+		InputMap.action_erase_events(action)
+		InputMap.action_add_event(action, event)
+
+
+func _save_controls() -> void:
+	var settings: ConfigFile = ConfigFile.new()
+	settings.load(SETTINGS_PATH)
+	for action in REBINDABLE_ACTIONS:
+		var events: Array[InputEvent] = InputMap.action_get_events(action)
+		settings.set_value(CONTROLS_SECTION, action, _event_to_text(events[0]) if not events.is_empty() else "")
+	var save_error: int = settings.save(SETTINGS_PATH)
+	if save_error != OK:
+		push_warning("[GameManager] Não foi possível salvar os controles (erro %d)." % save_error)
 
 
 func change_scene(scene_path: String) -> bool:

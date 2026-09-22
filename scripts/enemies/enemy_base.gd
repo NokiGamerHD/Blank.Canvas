@@ -62,7 +62,8 @@ const PRESETS: Dictionary = {
 		"explosion_radius": 92.0, "explosion_damage": 12.0, "explosion_paint_radius": 44.0,
 	},
 	EnemyType.BOSS: {
-		"max_hp": 1300.0,
+		"max_hp": 112.0,
+		"child_hp": [66.0, 32.0, 20.0, 11.0],
 		"ink_drop_chance": 0.3,
 		"speed": 86.0,
 		"contact_damage": 38.0,
@@ -80,6 +81,7 @@ const PRESETS: Dictionary = {
 		"explosion_radius": 120.0, "explosion_damage": 18.0, "explosion_paint_radius": 105.0,
 		"explosion_spatters": 16, "explosion_puffs": 3, "explosion_shake": 7.0,
 		"boss": true, "shard_count": 14, "shard_generations": 1,
+		"orb_interval": 3.4,
 	},
 	EnemyType.STALKER: {
 		"max_hp": 12.0,
@@ -137,6 +139,27 @@ const SHAKE_GENERATION_FALLOFF: float = 0.55
 const SHARD_COUNT_STEP: int = 5
 const MIN_SHARD_COUNT: int = 6
 const RECOLOR_MIN_SATURATION: float = 0.15
+const ORB_FIRST_DELAY_MIN: float = 0.9
+const ORB_FIRST_DELAY_MAX: float = 2.0
+const ORB_INTERVAL_SPREAD: float = 0.15
+const FUSION_SHADER: Shader = preload("res://assets/shaders/fusion_tint.gdshader")
+const FUSION_GROUP: String = "fused_enemies"
+const FUSION_CHANCE: float = 0.25
+const FUSION_COOLDOWN: float = 2.0
+const FUSION_MAX_TIER: int = 2
+const FUSION_MAX_ALIVE: int = 6
+const FUSION_HP_BONUS: float = 1.15
+const FUSION_SIZE_STEP: float = 1.25
+const FUSION_SPEED_BONUS: float = 1.12
+const FUSION_DAMAGE_BONUS: float = 1.2
+const FUSION_SATURATION_BOOST: float = 0.35
+const FUSION_ABSORB_TIME: float = 0.18
+const FUSION_GROW_TIME: float = 0.22
+const FUSION_FLASH: Color = Color(1.8, 1.8, 1.8, 1.0)
+const FUSION_FLASH_TIME: float = 0.25
+const FUSION_SPLASH_FACTOR: float = 2.2
+const FUSION_SPLASH_MIN: float = 26.0
+const FUSION_SPLASH_BLOBS: int = 6
 
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 
@@ -190,10 +213,21 @@ var shard_generations: int = 0
 var explosion_spatters: int = EXPLOSION_SPATTERS
 var explosion_puffs: int = 1
 var explosion_shake: float = 0.0
+var child_hp: Array = []
+var orb_interval: float = 0.0
 
 @export var generation: int = 0
 
 @export var spawn_hp: float = -1.0
+
+@export var hp_scale: float = 1.0
+
+@export var fusion_chance: float = FUSION_CHANCE
+
+@export var tint_override: Color = Color(0, 0, 0, 0)
+
+var fusion_tier: int = 0
+var fusion_tinted: bool = false
 
 var _damage_timer: float = 0.0
 var _dash_phase: DashPhase = DashPhase.READY
@@ -217,6 +251,9 @@ var _poison_tick: float = 0.0
 var _focus_stacks: int = 0
 var _focus_timer: float = 0.0
 var _poison_puff_timer: float = 0.0
+var _orb_timer: float = 0.0
+var _fusion_cooldown: float = 0.0
+var _fusion_aura: FusionAura = null
 
 static var _poison_puff_texture: ImageTexture = null
 
@@ -243,6 +280,10 @@ func _apply_preset() -> void:
 	current_hp = max_hp
 	contact_damage = preset["contact_damage"] * shrink
 	trail_color = preset["trail_color"]
+	if tint_override.a > 0.0:
+		trail_color = tint_override
+		fusion_tinted = true
+	_fusion_cooldown = randf_range(0.0, FUSION_COOLDOWN)
 	trail_radius = preset["trail_radius"] * shrink
 	collision_radius = preset["collision_radius"] * shrink
 	explosion_radius = preset.get("explosion_radius", 0.0) * shrink
@@ -255,6 +296,9 @@ func _apply_preset() -> void:
 	explosion_spatters = preset.get("explosion_spatters", EXPLOSION_SPATTERS)
 	explosion_puffs = preset.get("explosion_puffs", 1)
 	explosion_shake = preset.get("explosion_shake", 0.0) * pow(SHAKE_GENERATION_FALLOFF, generation)
+	child_hp = preset.get("child_hp", [])
+	orb_interval = preset.get("orb_interval", 0.0) if generation > 0 else 0.0
+	_orb_timer = randf_range(ORB_FIRST_DELAY_MIN, ORB_FIRST_DELAY_MAX)
 
 	speed = preset["speed"] * randf_range(0.9, 1.1)
 
@@ -286,6 +330,8 @@ func _apply_visual(preset: Dictionary) -> void:
 		sprite.play("walk")
 		if is_boss:
 			_build_aura()
+		if fusion_tinted:
+			_apply_fusion_tint()
 	else:
 		push_warning("[EnemyBase] Sprite sheet ausente (%s); usando visual procedural." % preset["sheet"])
 		var fallback: SpriteFrames = SpriteFrames.new()
@@ -373,6 +419,19 @@ func _spawn_boss_shards() -> void:
 		container.add_child(shard)
 
 
+func _shoot_orb(player: Player) -> void:
+	var container: Node = get_tree().get_first_node_in_group("projectiles_container")
+	if container == null:
+		return
+	var aim: Vector2 = (player.global_position - global_position).normalized()
+	if aim.is_zero_approx():
+		return
+	var orb: BossOrb = BossOrb.new()
+	orb.setup(aim, trail_color, _arena_bounds)
+	orb.position = global_position + aim * collision_radius
+	container.add_child(orb)
+
+
 func _physics_process(delta: float) -> void:
 	_damage_timer = maxf(_damage_timer - delta, 0.0)
 	_dash_cooldown_timer = maxf(_dash_cooldown_timer - delta, 0.0)
@@ -412,6 +471,15 @@ func _physics_process(delta: float) -> void:
 	_update_facing()
 	_check_contact_damage()
 	_paint_trail()
+
+	_fusion_cooldown = maxf(_fusion_cooldown - delta, 0.0)
+	_try_fusion()
+
+	if orb_interval > 0.0:
+		_orb_timer -= delta
+		if _orb_timer <= 0.0:
+			_orb_timer = orb_interval * randf_range(1.0 - ORB_INTERVAL_SPREAD, 1.0 + ORB_INTERVAL_SPREAD)
+			_shoot_orb(player)
 
 
 func _desired_velocity(player: Player) -> Vector2:
@@ -515,6 +583,7 @@ func _spawn_dash_ghost(delta: float) -> void:
 	ghost.scale = sprite.scale
 	ghost.flip_h = sprite.flip_h
 	ghost.modulate = Color(1.0, 1.0, 1.0, GHOST_ALPHA)
+	ghost.material = sprite.material
 	container.add_child(ghost)
 	ghost.global_position = global_position
 
@@ -616,8 +685,28 @@ func _splat_on_death() -> void:
 
 
 func apply_wave_scaling(hp_multiplier: float) -> void:
+	hp_scale *= hp_multiplier
 	max_hp *= hp_multiplier
 	current_hp = max_hp
+
+
+func remaining_tree_hp() -> float:
+	var total: float = maxf(current_hp, 0.0)
+	if not _splits_when_depleted():
+		return total
+	var parts: int = 2
+	for level in range(generation + 1, split_generations + 1):
+		total += parts * _hp_for_generation(level)
+		parts *= 2
+	return total
+
+
+func _splits_when_depleted() -> bool:
+	return not child_hp.is_empty()
+
+
+func _hp_for_generation(level: int) -> float:
+	return float(child_hp[clampi(level - 1, 0, child_hp.size() - 1)]) * hp_scale
 
 
 func take_damage(amount: float, play_sound: bool = true, critical: bool = false) -> void:
@@ -629,9 +718,12 @@ func take_damage(amount: float, play_sound: bool = true, critical: bool = false)
 	if play_sound:
 		AudioManager.play_hit()
 	if current_hp <= 0.0:
-		_die()
+		if _splits_when_depleted() and generation < split_generations:
+			_split()
+		else:
+			_die()
 		return
-	if split_generations > 0 and generation < split_generations:
+	if split_generations > 0 and generation < split_generations and not _splits_when_depleted():
 		_split()
 
 
@@ -723,6 +815,8 @@ func _flash_damage() -> void:
 
 
 func _spawn_damage_number(amount: float, critical: bool = false) -> void:
+	if not GameManager.damage_numbers:
+		return
 	var container: Node = get_tree().get_first_node_in_group("effects_container")
 	if container == null:
 		return
@@ -738,7 +832,9 @@ func _split() -> void:
 	collision_shape.set_deferred("disabled", true)
 	_explode()
 
-	var child_hp: float = maxf(current_hp * 0.5, 1.0)
+	var next_hp: float = maxf(current_hp * 0.5, 1.0)
+	if _splits_when_depleted():
+		next_hp = _hp_for_generation(generation + 1)
 	var scene: PackedScene = _get_scene()
 	var container: Node = get_parent()
 	if scene == null or container == null:
@@ -752,7 +848,10 @@ func _split() -> void:
 		var child: EnemyBase = scene.instantiate()
 		child.enemy_type = enemy_type
 		child.generation = generation + 1
-		child.spawn_hp = child_hp
+		child.spawn_hp = next_hp
+		child.hp_scale = hp_scale
+		if fusion_tinted:
+			child.tint_override = trail_color
 		child.position = global_position + Vector2.from_angle(heading + PI * i) * collision_radius
 		child.set_arena_bounds(_arena_bounds)
 		container.add_child.call_deferred(child)
@@ -808,6 +907,7 @@ func _spawn_explosion_puff(scattered: bool = false) -> void:
 	puff.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	puff.scale = sprite.scale
 	puff.modulate = Color(1.0, 1.0, 1.0, EXPLOSION_PUFF_ALPHA)
+	puff.material = sprite.material
 	puff.set_meta("explosion_puff", true)
 	container.add_child(puff)
 	puff.global_position = global_position
@@ -844,15 +944,138 @@ func _die() -> void:
 
 
 func _drop_ink() -> void:
-	if randf() >= ink_drop_chance:
+	var count: int = fusion_tier + 1
+	if fusion_tier == 0 and randf() >= ink_drop_chance:
 		return
 	var container: Node2D = get_tree().get_first_node_in_group(PaintDrop.CONTAINER_GROUP) as Node2D
 	if container == null:
 		return
-	var drop: PaintDrop = PaintDrop.new()
-	drop.setup(trail_color)
-	drop.position = container.to_local(global_position)
-	container.add_child(drop)
+	for index in count:
+		var drop: PaintDrop = PaintDrop.new()
+		drop.setup(trail_color)
+		drop.position = container.to_local(global_position)
+		container.add_child(drop)
+
+
+func can_fuse() -> bool:
+	return not is_boss and not _is_dying and is_inside_tree()
+
+
+func _try_fusion() -> void:
+	if _fusion_cooldown > 0.0 or not can_fuse():
+		return
+	for index in get_slide_collision_count():
+		var other: EnemyBase = get_slide_collision(index).get_collider() as EnemyBase
+		if other == null or other._fusion_cooldown > 0.0 or not other.can_fuse() \
+				or fusion_tier + other.fusion_tier + 1 > FUSION_MAX_TIER:
+			continue
+		_fusion_cooldown = FUSION_COOLDOWN
+		other._fusion_cooldown = FUSION_COOLDOWN
+		if randf() < fusion_chance and _fused_alive() < FUSION_MAX_ALIVE:
+			fuse_with(other)
+		return
+
+
+func _fused_alive() -> int:
+	return get_tree().get_nodes_in_group(FUSION_GROUP).size()
+
+
+func fuse_with(other: EnemyBase) -> EnemyBase:
+	var survivor: EnemyBase = self if max_hp >= other.max_hp else other
+	var absorbed: EnemyBase = other if survivor == self else self
+	survivor._absorb(absorbed)
+	return survivor
+
+
+func _absorb(absorbed: EnemyBase) -> void:
+	var own_color: Color = trail_color
+	var other_color: Color = absorbed.trail_color
+	var mixed: bool = own_color.to_rgba32() != other_color.to_rgba32()
+
+	fusion_tier = mini(fusion_tier + absorbed.fusion_tier + 1, FUSION_MAX_TIER)
+	max_hp = (max_hp + absorbed.max_hp) * FUSION_HP_BONUS
+	current_hp = (maxf(current_hp, 0.0) + maxf(absorbed.current_hp, 0.0)) * FUSION_HP_BONUS
+	contact_damage = maxf(contact_damage, absorbed.contact_damage) * FUSION_DAMAGE_BONUS
+	collision_radius *= FUSION_SIZE_STEP
+	trail_radius *= FUSION_SIZE_STEP
+	explosion_radius *= FUSION_SIZE_STEP
+	explosion_paint_radius *= FUSION_SIZE_STEP
+	(collision_shape.shape as CircleShape2D).radius = collision_radius
+	if mixed:
+		speed = maxf(speed, absorbed.speed) * FUSION_SPEED_BONUS
+		sprite.speed_scale *= FUSION_SPEED_BONUS
+		trail_color = PaintCanvas.mix_colors(PaintCanvas.flatten(own_color), PaintCanvas.flatten(other_color))
+		fusion_tinted = true
+		_apply_fusion_tint()
+
+	add_to_group(FUSION_GROUP)
+	_build_fusion_aura()
+	_paint_fusion_splash(absorbed.global_position, own_color, other_color)
+	absorbed._be_absorbed(self)
+	AudioManager.play_enemy_merge()
+
+	var grow: Tween = create_tween()
+	grow.tween_property(sprite, "scale", sprite.scale * FUSION_SIZE_STEP, FUSION_GROW_TIME) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	sprite.modulate = FUSION_FLASH
+	var flash: Tween = create_tween()
+	flash.tween_property(sprite, "modulate", Color.WHITE, FUSION_FLASH_TIME)
+
+
+func _be_absorbed(survivor: EnemyBase) -> void:
+	_is_dying = true
+	remove_from_group("enemies")
+	remove_from_group(FUSION_GROUP)
+	set_physics_process(false)
+	collision_shape.set_deferred("disabled", true)
+	died.emit(self)
+
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "global_position", survivor.global_position, FUSION_ABSORB_TIME)
+	tween.tween_property(sprite, "scale", sprite.scale * 0.3, FUSION_ABSORB_TIME)
+	tween.tween_property(sprite, "modulate:a", 0.0, FUSION_ABSORB_TIME)
+	await tween.finished
+	queue_free()
+
+
+func _apply_fusion_tint() -> void:
+	var material: ShaderMaterial = sprite.material as ShaderMaterial
+	if material == null:
+		material = ShaderMaterial.new()
+		material.shader = FUSION_SHADER
+		sprite.material = material
+	material.set_shader_parameter("target_hue", trail_color.h)
+	material.set_shader_parameter("min_saturation", RECOLOR_MIN_SATURATION)
+	material.set_shader_parameter("saturation_boost", FUSION_SATURATION_BOOST)
+
+
+func _build_fusion_aura() -> void:
+	if _fusion_aura != null and is_instance_valid(_fusion_aura):
+		_fusion_aura.queue_free()
+	_fusion_aura = FusionAura.new()
+	add_child(_fusion_aura)
+	_fusion_aura.setup(collision_radius, trail_color, fusion_tier)
+
+
+func fusion_aura() -> FusionAura:
+	return _fusion_aura
+
+
+func _paint_fusion_splash(other_position: Vector2, own_color: Color, other_color: Color) -> void:
+	var canvas: PaintCanvas = _get_paint_canvas()
+	if canvas == null:
+		return
+	var center: Vector2 = (global_position + other_position) * 0.5
+	var radius: float = maxf(collision_radius * FUSION_SPLASH_FACTOR, FUSION_SPLASH_MIN)
+	var start: float = randf() * TAU
+	canvas.paint_circle(other_position, radius * 0.7, other_color)
+	canvas.paint_circle(global_position, radius * 0.7, own_color)
+	for index in FUSION_SPLASH_BLOBS:
+		var angle: float = start + TAU * float(index) / FUSION_SPLASH_BLOBS + randf_range(-0.35, 0.35)
+		var spot: Vector2 = center + Vector2.from_angle(angle) * radius * randf_range(0.4, 0.8)
+		canvas.paint_circle(spot, radius * randf_range(0.4, 0.65),
+			other_color if index % 2 == 0 else own_color)
 
 
 func _build_texture(shape: String, half_size: int, color: Color) -> ImageTexture:

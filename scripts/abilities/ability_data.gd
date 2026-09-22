@@ -5,7 +5,7 @@ enum ShotType { STANDARD, CHARGE, RAPID }
 
 const SHOT_PRESETS: Dictionary = {
 	ShotType.STANDARD: {
-		"damage": 1.0, "cooldown": 0.8, "speed": 1.0, "range": 700.0, "size": 1.0,
+		"damage": 1.0, "cooldown": 0.8, "speed": 1.0, "range": 400.0, "size": 1.0,
 		"homing_turn_rate": 4.5,
 	},
 	ShotType.CHARGE: {
@@ -41,7 +41,7 @@ const CHARGE_FULL_PIERCE: int = 2
 
 @export var shot_type: int = ShotType.STANDARD
 
-@export var shot_range: float = 700.0
+@export var shot_range: float = 400.0
 
 @export var homing_turn_rate: float = 0.0
 

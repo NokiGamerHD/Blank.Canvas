@@ -87,6 +87,8 @@ func _ready() -> void:
 
 
 func shake(strength: float) -> void:
+	if not GameManager.screen_shake:
+		return
 	_shake_strength = clampf(maxf(_shake_strength, strength), 0.0, MAX_SHAKE)
 
 

@@ -52,13 +52,24 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 - A stats panel under the minimap with life, attack, fire rate and the other
   numbers each upgrade changes
 - Endless waves with increasing difficulty and enemy variety
-- A boss every 10 waves, alone in its own wave: a giant splitting square with a
-  pulsing aura and its own health bar, whose huge explosions shake the screen
-  and spray wide paint-trailing shards that fly to the arena walls
+- A boss every 10 waves, alone in its own wave: a giant square with a pulsing
+  aura that takes a beating before it splits, into pieces that each take fewer
+  hits, down to a single one. The pieces lob slow paint orbs at the player, every
+  split sets off a huge explosion that shakes the screen and sprays wide
+  paint-trailing shards to the arena walls, and one health bar tracks the whole
+  family
+- Enemies that bump into each other can fuse into a bigger, stronger enemy
+  bubbling with foam in its own color, crackling with lightning when it fuses
+  twice; two different colors fuse into the stronger enemy painted in the mixed
+  color, and faster
 - Enemies drop paint drops in their own ink color, collected by walking close
 - Progression every 5 waves: random upgrades, rerolls paid in paint drops and
   new abilities bought with them
-- English/Portuguese localization, switchable from the main menu
+- A settings screen, from the menu and from the pause screen: volume, mute,
+  fullscreen, screen shake, damage numbers, language and rebindable controls
+- Wave announcements on screen, with a different banner, colour and sound when a
+  boss wave starts
+- English/Portuguese localization, switchable from the settings screen
 - Save the finished painted canvas as an image at the end of a run
 
 ## Technology
@@ -72,7 +83,7 @@ to desktop and Web.
 scenes/     Godot scenes (menu, editors, arena, UI)
 scripts/    source code (GDScript)
 assets/     sprites, fonts, shaders, backgrounds, audio
-press-kit/  store page material (screenshots, cover art, icon)
+press-kit/  store page and event material (screenshots, cover art, icon, banners)
 ```
 
 ## License

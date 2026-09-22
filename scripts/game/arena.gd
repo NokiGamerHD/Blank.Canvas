@@ -29,6 +29,7 @@ const CROSSHAIR_PATTERN: Array[String] = [
 	"......+++......",
 ]
 const CROSSHAIR_SCALE: int = 2
+const DROP_GATHER_TIMEOUT: float = 1.4
 const CROSSHAIR_INK: Color = Color(0.1, 0.1, 0.1, 1.0)
 const CROSSHAIR_OUTLINE: Color = Color(1.0, 1.0, 1.0, 1.0)
 
@@ -46,6 +47,8 @@ const CROSSHAIR_OUTLINE: Color = Color(1.0, 1.0, 1.0, 1.0)
 @onready var in_run_creator: DrawingCreatorBase = $InRunAbilityCreator/AbilityCreator
 @onready var ability_controller: AbilityController = $Player/AbilityController
 @onready var pause_screen: CanvasLayer = $PauseScreen
+
+var _settings_screen: SettingsScreen = null
 
 
 func _ready() -> void:
@@ -108,6 +111,7 @@ func _setup_hud() -> void:
 	player.health_changed.connect(hud.update_hp)
 	hud.update_hp(player.current_hp, player.max_hp)
 	wave_manager.wave_changed.connect(hud.update_wave)
+	wave_manager.wave_changed.connect(_on_wave_changed)
 	wave_manager.boss_spawned.connect(hud.track_boss)
 	hud.setup_abilities(ability_controller)
 	hud.setup_player(player)
@@ -124,17 +128,51 @@ func _setup_progression() -> void:
 	in_run_creator.in_run_cancelled.connect(_on_in_run_ability_cancelled)
 
 
+func _on_wave_changed(wave: int) -> void:
+	hud.announce_wave(wave, wave_manager.is_boss_wave(wave))
+
+
+func _on_settings_requested() -> void:
+	if _settings_screen == null:
+		_settings_screen = SettingsScreen.new()
+		add_child(_settings_screen)
+	_settings_screen.open()
+
+
 func _on_wave_completed(_wave: int) -> void:
 	player.heal_fraction(per_wave_heal_fraction)
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).attract()
+	for orb in get_tree().get_nodes_in_group(BossOrb.GROUP):
+		(orb as BossOrb).dissolve()
 
 
 func _on_progression_due(wave: int) -> void:
 	player.heal_to_full()
+	await _gather_drops()
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).collect()
+	while get_tree().paused:
+		await get_tree().process_frame
 	progression_screen.open(wave, ability_controller.get_abilities(), player)
+
+
+func _gather_drops() -> void:
+	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
+		(drop as PaintDrop).attract()
+	var waited: float = 0.0
+	while waited < DROP_GATHER_TIMEOUT and _drops_on_the_way() > 0:
+		await get_tree().process_frame
+		if not get_tree().paused:
+			waited += get_process_delta_time()
+
+
+func _drops_on_the_way() -> int:
+	var count: int = 0
+	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
+		if not drop.is_queued_for_deletion():
+			count += 1
+	return count
 
 
 func _on_progression_upgrade_chosen() -> void:
@@ -170,6 +208,7 @@ func _next_free_ability_index() -> int:
 
 
 func _setup_pause() -> void:
+	pause_screen.settings_requested.connect(_on_settings_requested)
 	pause_screen.menu_requested.connect(GameManager.go_to_main_menu)
 	pause_screen.restart_requested.connect(GameManager.restart_run)
 
