@@ -5,38 +5,28 @@ const SLOT_WIDTH: int = 13
 const SLOT_HEIGHT: int = 16
 const SLOT_SCALE: int = 2
 const SLOT_SEPARATION: int = 4
+const SLOTS_PER_ROW: int = 4
+const ROW_SEPARATION: int = 3
 const KEY_FONT_SIZE: int = 8
 const KEY_GAP: int = 4
 const KEY_COLOR: Color = Color(0.2, 0.2, 0.2, 1.0)
 const FRAME_COLOR: Color = Color(0.18, 0.18, 0.18, 1.0)
 const EMPTY_COLOR: Color = Color(0.78, 0.78, 0.75, 0.6)
-const ACTIVE_BAR_HEIGHT: float = 3.0
 
 static var _slot_cache: Dictionary = {}
 
-var _rows: HBoxContainer = null
-var _active_bar: ColorRect = null
+var _column: VBoxContainer = null
+var _rows: Array[HBoxContainer] = []
 var _belt: FlaskBelt = null
 var _cells: Array[TextureRect] = []
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var column: VBoxContainer = VBoxContainer.new()
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_theme_constant_override("separation", 2)
-	add_child(column)
-
-	_rows = HBoxContainer.new()
-	_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_rows.add_theme_constant_override("separation", SLOT_SEPARATION)
-	column.add_child(_rows)
-
-	_active_bar = ColorRect.new()
-	_active_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_active_bar.custom_minimum_size = Vector2(0.0, ACTIVE_BAR_HEIGHT)
-	_active_bar.visible = false
-	column.add_child(_active_bar)
+	_column = VBoxContainer.new()
+	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_column.add_theme_constant_override("separation", ROW_SEPARATION)
+	add_child(_column)
 
 
 func setup(belt: FlaskBelt) -> void:
@@ -45,8 +35,6 @@ func setup(belt: FlaskBelt) -> void:
 		return
 	if not _belt.slots_changed.is_connected(refresh):
 		_belt.slots_changed.connect(refresh)
-	if not _belt.effect_changed.is_connected(_on_effect_changed):
-		_belt.effect_changed.connect(_on_effect_changed)
 	refresh()
 
 
@@ -55,9 +43,10 @@ func refresh() -> void:
 		return
 	var capacity: int = _belt.capacity()
 	while _cells.size() > capacity:
-		_cells.pop_back().queue_free()
+		_cells.pop_back().get_parent().queue_free()
 	while _cells.size() < capacity:
-		_cells.append(_build_cell(_cells.size() + 1))
+		_cells.append(_build_cell(_cells.size()))
+	_drop_empty_rows()
 
 	for index in _cells.size():
 		var color: Color = EMPTY_COLOR
@@ -74,15 +63,46 @@ func capacity() -> int:
 	return _cells.size()
 
 
-func active_color() -> Color:
-	return _active_bar.color if _active_bar.visible else Color(0, 0, 0, 0)
+func row_count() -> int:
+	return _rows.size()
 
 
-func _build_cell(key_number: int) -> TextureRect:
+func slots_in_row(row: int) -> int:
+	if row < 0 or row >= _rows.size():
+		return 0
+	return _live_children(_rows[row])
+
+
+func _row_for(index: int) -> HBoxContainer:
+	var wanted: int = index / SLOTS_PER_ROW
+	while _rows.size() <= wanted:
+		var row: HBoxContainer = HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", SLOT_SEPARATION)
+		_column.add_child(row)
+		_rows.append(row)
+	return _rows[wanted]
+
+
+func _drop_empty_rows() -> void:
+	while _rows.size() > 1 and _live_children(_rows.back()) == 0:
+		var row: HBoxContainer = _rows.pop_back()
+		row.queue_free()
+
+
+func _live_children(row: HBoxContainer) -> int:
+	var count: int = 0
+	for child in row.get_children():
+		if not child.is_queued_for_deletion():
+			count += 1
+	return count
+
+
+func _build_cell(index: int) -> TextureRect:
 	var cell: VBoxContainer = VBoxContainer.new()
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.add_theme_constant_override("separation", KEY_GAP)
-	_rows.add_child(cell)
+	_row_for(index).add_child(cell)
 
 	var icon: TextureRect = TextureRect.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -93,17 +113,12 @@ func _build_cell(key_number: int) -> TextureRect:
 
 	var key: Label = Label.new()
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	key.text = str(key_number)
+	key.text = str(index + 1)
 	key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	key.add_theme_font_size_override("font_size", KEY_FONT_SIZE)
 	key.add_theme_color_override("font_color", KEY_COLOR)
 	cell.add_child(key)
 	return icon
-
-
-func _on_effect_changed(color: Color, effects: Array[String]) -> void:
-	_active_bar.visible = not effects.is_empty()
-	_active_bar.color = color
 
 
 static func _slot_texture(color: Color, filled: bool) -> ImageTexture:

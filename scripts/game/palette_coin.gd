@@ -21,13 +21,11 @@ const DAB_COLORS: Dictionary = {
 	"g": Color("15b10f"),
 }
 const PIXEL_SCALE: int = 3
-const MAGNET_RADIUS: float = 130.0
-const COLLECT_DISTANCE: float = 16.0
-const FLY_START_SPEED: float = 160.0
-const FLY_ACCELERATION: float = 2200.0
+const COLLECT_DISTANCE: float = 22.0
 const POP_TIME: float = 0.3
 const POP_HEIGHT: float = 22.0
-const BOB_SPEED: float = 2.4
+const FLOAT_SPEED: float = 2.2
+const FLOAT_HEIGHT: float = 2.0
 const SHINE_SPEED: float = 3.0
 const SHINE_MIN: float = 0.82
 
@@ -36,10 +34,9 @@ static var _texture: ImageTexture = null
 var _sprite: Sprite2D = null
 var _hop_tween: Tween = null
 var _landed: bool = false
-var _flying: bool = false
 var _collected: bool = false
-var _speed: float = 0.0
-var _bob_time: float = 0.0
+var _float_time: float = 0.0
+var _shine_time: float = 0.0
 var _player: Player = null
 
 
@@ -49,7 +46,8 @@ func _ready() -> void:
 	_sprite.texture = coin_texture()
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(_sprite)
-	_bob_time = randf() * TAU
+	_float_time = randf() * TAU
+	_shine_time = randf() * TAU
 
 	_hop_tween = create_tween()
 	_hop_tween.tween_property(_sprite, "position:y", -POP_HEIGHT, POP_TIME * 0.5) \
@@ -62,34 +60,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _collected:
 		return
-	_bob_time += delta * SHINE_SPEED
+	_shine_time += delta * SHINE_SPEED
+	_float_time += delta * FLOAT_SPEED
 	_sprite.modulate = Color(1.0, 1.0, 1.0, 1.0).lerp(
-		Color(SHINE_MIN, SHINE_MIN, SHINE_MIN, 1.0), (sin(_bob_time) + 1.0) * 0.5)
+		Color(SHINE_MIN, SHINE_MIN, SHINE_MIN, 1.0), (sin(_shine_time) + 1.0) * 0.5)
+	if _landed:
+		_sprite.position.y = roundf(sin(_float_time) * FLOAT_HEIGHT) * float(PIXEL_SCALE)
 
 	var player: Player = _get_player()
 	if player == null or player.is_dead():
 		return
-	if not _flying:
-		_bob()
-		if global_position.distance_to(player.global_position) <= MAGNET_RADIUS:
-			attract()
-		return
-
-	_speed += FLY_ACCELERATION * delta
-	var to_player: Vector2 = player.global_position - global_position
-	var step: float = _speed * delta
-	if to_player.length() <= maxf(COLLECT_DISTANCE, step):
+	if global_position.distance_to(player.global_position) <= COLLECT_DISTANCE:
 		collect()
-		return
-	global_position += to_player.normalized() * step
-
-
-func attract() -> void:
-	if _flying or _collected:
-		return
-	_flying = true
-	_speed = FLY_START_SPEED
-	_stop_hop()
 
 
 func collect() -> void:
@@ -102,16 +84,6 @@ func collect() -> void:
 	queue_free()
 
 
-func is_flying() -> bool:
-	return _flying
-
-
-func _bob() -> void:
-	if not _landed:
-		return
-	_sprite.position.y = -float(PIXEL_SCALE) if sin(_bob_time) > 0.0 else 0.0
-
-
 func _on_landed() -> void:
 	_landed = true
 
@@ -120,8 +92,6 @@ func _stop_hop() -> void:
 	if _hop_tween != null and _hop_tween.is_valid():
 		_hop_tween.kill()
 	_landed = true
-	if _sprite != null:
-		_sprite.position.y = 0.0
 
 
 func _get_player() -> Player:
