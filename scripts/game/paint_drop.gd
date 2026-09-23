@@ -77,7 +77,7 @@ func _process(delta: float) -> void:
 	if not _flying:
 		_bob(delta)
 		if player != null and not player.is_dead() \
-				and global_position.distance_to(player.global_position) <= MAGNET_RADIUS:
+				and global_position.distance_to(player.global_position) <= player.pickup_radius(MAGNET_RADIUS):
 			attract()
 		return
 	if player == null or player.is_dead():

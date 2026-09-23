@@ -41,7 +41,9 @@ const STAIN_ALPHA: float = 0.92
 const PAINT_TINT_MIX: float = 0.22
 const PAINT_TINT_SPEED: float = 5.0
 
-@export var max_speed: float = 320.0
+const BASE_SPEED: float = 320.0
+
+@export var max_speed: float = BASE_SPEED
 
 @export var acceleration: float = 2400.0
 
@@ -80,6 +82,7 @@ var _aim_override_enabled: bool = false
 var _aim_override: Vector2 = Vector2.ZERO
 
 var flask_belt: FlaskBelt = null
+var pickup_bonus: float = 1.0
 
 var _paint_canvas: PaintCanvas = null
 var _footing: PaintCanvas.Footing = PaintCanvas.Footing.CLEAN
@@ -184,6 +187,10 @@ func _update_footing(delta: float, moving: bool) -> void:
 		return
 	_puff_timer = PAINT_PUFF_INTERVAL
 	_spawn_paint_puff(_paint_canvas.color_at(global_position))
+
+
+func pickup_radius(base: float) -> float:
+	return base * pickup_bonus
 
 
 func flask_speed_multiplier() -> float:

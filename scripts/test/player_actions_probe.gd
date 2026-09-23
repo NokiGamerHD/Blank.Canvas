@@ -166,7 +166,8 @@ func _check_dash_upgrade() -> void:
 	var floor_value: float = _player.dash_cooldown
 	_player.dash_cooldown = original
 	_report("upgrade de dash reduz a recarga com piso",
-		is_equal_approx(once, original * 0.7) and is_equal_approx(floor_value, Player.MIN_DASH_COOLDOWN),
+		is_equal_approx(once, original * screen.DASH_COOLDOWN_MULTIPLIER)
+			and is_equal_approx(floor_value, Player.MIN_DASH_COOLDOWN),
 		"%.2f -> %.2f, apos 21 upgrades %.2f (piso %.2f)" % [
 			original, once, floor_value, Player.MIN_DASH_COOLDOWN
 		])
@@ -241,13 +242,15 @@ func _check_stronger_upgrades() -> void:
 	for upgrade in ["damage", "cooldown", "count", "size", "pierce", "speed"]:
 		screen._apply_upgrade(upgrade, data)
 	var after: Array = [data.damage, data.cooldown, data.projectile_count, data.size_scale, data.piercing, data.projectile_speed]
-	var passed: bool = is_equal_approx(data.damage, 30.0) \
-		and is_equal_approx(data.cooldown, 0.75) \
-		and data.projectile_count == 3 \
-		and is_equal_approx(data.size_scale, 1.5) \
-		and data.piercing == 2 \
-		and is_equal_approx(data.projectile_speed, 936.0)
-	_report("upgrades mais fortes", passed, "antes=%s depois=%s" % [before, after])
+	var screen_ref: Node = screen
+	var passed: bool = is_equal_approx(data.damage, 20.0 * screen_ref.DAMAGE_MULTIPLIER) \
+		and is_equal_approx(data.cooldown, 1.0 * screen_ref.COOLDOWN_MULTIPLIER) \
+		and data.projectile_count == 1 + screen_ref.COUNT_STEP \
+		and is_equal_approx(data.size_scale, 1.0 * screen_ref.SIZE_MULTIPLIER) \
+		and data.piercing == screen_ref.PIERCE_STEP \
+		and is_equal_approx(data.projectile_speed, 720.0 * screen_ref.SPEED_MULTIPLIER)
+	_report("upgrades de tiro batem com os multiplicadores da tela", passed,
+		"antes=%s depois=%s" % [before, after])
 
 
 func _check_dash_upgrade_needs_player() -> void:
@@ -318,13 +321,59 @@ func _check_stats_panel() -> void:
 
 	_player.max_hp = saved_max
 	_player.current_hp = saved_hp
+	var buffed: float = _controller.damage * _arena.progression_screen.DAMAGE_MULTIPLIER
+	var buffed_text: String = str(roundi(buffed))
+	var two_abilities_text: String = str(roundi(buffed + _controller.damage))
 	var expected_charge: String = "%d-%d" % [
 		roundi(_controller.damage * AbilityData.CHARGE_MIN_DAMAGE),
 		roundi(_controller.damage * AbilityData.CHARGE_MAX_DAMAGE),
 	]
+	_player.max_hp = 100.0
+	_player.current_hp = 73.0
+	panel.refresh()
+	await get_tree().process_frame
+	var stats_rows: int = panel.STATS.size()
+	var range_text: String = panel.value_text("range")
+	var move_before: String = panel.value_text("move")
+	var pickup_before: String = panel.value_text("pickup")
+	_arena.progression_screen._player = _player
+	_arena.progression_screen._apply_upgrade("move_speed", data)
+	_arena.progression_screen._apply_upgrade("pickup", data)
+	panel.refresh()
+	var player_stats_grew: bool = panel.value_text("move") != move_before \
+		and panel.value_text("pickup") != pickup_before
+	_player.max_speed = Player.BASE_SPEED
+	_player.pickup_bonus = 1.0
+
+	var width_plain: float = panel.get_global_rect().size.x
+	var perks_before: int = panel.perk_names().size()
+	_controller.add_perk("critical")
+	panel.refresh()
+	await get_tree().process_frame
+	var perk_shown: bool = panel.perk_names().size() == perks_before + 1 \
+		and panel.perk_names()[perks_before] == LocalizationManager.text("perk.short.critical")
+	_controller.perks.clear()
+	panel.refresh()
+	await get_tree().process_frame
+	var width_with_perk: float = panel.get_global_rect().size.x
+	var perk_gone: bool = panel.perk_names().is_empty()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var still_narrow: bool = panel.get_global_rect().size.x <= minimap_panel.get_global_rect().size.x + 0.5
+	_player.max_hp = saved_max
+	_player.current_hp = saved_hp
+	panel.refresh()
+	_report("painel mostra alcance, passo, ima e as passivas douradas",
+		stats_rows == 10 and range_text != "-" and player_stats_grew and perk_shown and perk_gone
+			and still_narrow and width_with_perk <= minimap_panel.get_global_rect().size.x + 0.5,
+		"linhas=%d alcance=%s passo=%s ima=%s cresceu=%s largura=%.0f de %.0f passiva=%s" % [
+			stats_rows, range_text, move_before, pickup_before, player_stats_grew, width_with_perk,
+			minimap_panel.get_global_rect().size.x, perk_shown and perk_gone])
+
 	_report("painel de status geral, do tamanho do minimapa, sobe com buff e habilidade",
 		below_minimap and same_width and life == "73/100" and damage_before == "20" \
-			and damage_after_buff == "30" and damage_two_abilities == "50" and rate_grew \
+			and damage_after_buff == buffed_text and damage_two_abilities == two_abilities_text \
+			and rate_grew \
 			and charge_damage == expected_charge and charge_pierce == "0-2",
 		"embaixo=%s largura_ok=%s vida=%s dano=%s->%s->%s ritmo_subiu=%s carregado=%s fura=%s" % [
 			below_minimap, same_width, life, damage_before, damage_after_buff, damage_two_abilities,

@@ -7,13 +7,17 @@ const LABEL_COLOR: Color = Color(0.4, 0.4, 0.4, 1.0)
 const VALUE_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
 const RATE_DECIMAL_LIMIT: float = 10.0
 
-const STATS: Array[String] = ["life", "damage", "rate", "pierce", "size", "speed", "dash"]
+const STATS: Array[String] = [
+	"life", "damage", "rate", "pierce", "size", "speed", "range", "dash", "move", "pickup",
+]
+const PERK_COLOR: Color = Color(0.66, 0.48, 0.04, 1.0)
 
 var _player: Player = null
 var _controller: AbilityController = null
 var _rows: VBoxContainer = null
 var _names: Dictionary = {}
 var _values: Dictionary = {}
+var _perk_rows: Array[Label] = []
 
 
 func _ready() -> void:
@@ -45,7 +49,48 @@ func refresh() -> void:
 	_set_value("pierce", format_pierce(abilities))
 	_set_value("size", format_size(abilities))
 	_set_value("speed", format_speed(abilities))
+	_set_value("range", format_range(abilities))
 	_set_value("dash", LocalizationManager.text("stats.seconds", [_decimal(_player.dash_cooldown)]))
+	_set_value("move", "%d%%" % roundi(_player.max_speed / Player.BASE_SPEED * 100.0))
+	_set_value("pickup", "%d%%" % roundi(_player.pickup_bonus * 100.0))
+	_refresh_perk_rows()
+
+
+func format_range(abilities: Array[AbilityData]) -> String:
+	if abilities.is_empty():
+		return "-"
+	var total: float = 0.0
+	for data in abilities:
+		total += data.shot_range
+	return str(roundi(total / abilities.size()))
+
+
+func perk_names() -> PackedStringArray:
+	var names: PackedStringArray = PackedStringArray()
+	for label in _perk_rows:
+		names.append(label.text)
+	return names
+
+
+func _refresh_perk_rows() -> void:
+	var wanted: Array[String] = _controller.perks
+	while _perk_rows.size() > wanted.size():
+		_perk_rows.pop_back().get_parent().queue_free()
+	while _perk_rows.size() < wanted.size():
+		_perk_rows.append(_add_perk_row())
+	for index in wanted.size():
+		_perk_rows[index].text = LocalizationManager.text(ShotPerks.short_key(wanted[index]))
+
+
+func _add_perk_row() -> Label:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rows.add_child(row)
+	var label: Label = _make_label(PERK_COLOR)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.clip_text = true
+	row.add_child(label)
+	return label
 
 
 func value_text(stat: String) -> String:

@@ -246,9 +246,10 @@ func _check_cooldown_upgrade_shortens_charge() -> void:
 	data.apply_shot_type(AbilityData.ShotType.CHARGE, 20.0, 1.0, 720.0)
 	var before: float = data.charge_time
 	_arena.progression_screen._apply_upgrade("cooldown", data)
+	var step: float = _arena.progression_screen.COOLDOWN_MULTIPLIER
 	_report("upgrade de recarga encurta a carga",
-		is_equal_approx(data.charge_time, before * 0.75),
-		"carga %.3fs -> %.3fs" % [before, data.charge_time])
+		is_equal_approx(data.charge_time, before * step),
+		"carga %.3fs -> %.3fs (fator %.2f)" % [before, data.charge_time, step])
 
 
 func _check_missing_type_defaults_to_standard() -> void:

@@ -59,6 +59,7 @@ var _ink_label: Label = null
 var _palette_row: HBoxContainer = null
 var _palette_label: Label = null
 var _flask_bar: FlaskBar = null
+var _map_overlay: MapOverlay = null
 var _dash_icon_large: ImageTexture = null
 var _dash_icon_small: ImageTexture = null
 var _slots: Array[AbilitySlot] = []
@@ -352,6 +353,19 @@ func _build_controls_hint() -> void:
 
 func setup_minimap(arena: Arena) -> void:
 	minimap.setup(arena)
+	_build_map_overlay(arena)
+
+
+func map_overlay() -> MapOverlay:
+	return _map_overlay
+
+
+func _build_map_overlay(arena: Arena) -> void:
+	if _map_overlay == null:
+		_map_overlay = MapOverlay.new()
+		add_child(_map_overlay)
+		move_child(_map_overlay, enemy_indicators.get_index())
+	_map_overlay.setup(arena)
 
 
 func setup_enemy_indicators(arena: Arena) -> void:

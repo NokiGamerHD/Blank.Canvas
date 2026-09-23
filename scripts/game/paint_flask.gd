@@ -89,7 +89,7 @@ func _process(delta: float) -> void:
 	if not _flying:
 		_bob(delta)
 		if _has_room():
-			if distance <= MAGNET_RADIUS:
+			if distance <= player.pickup_radius(MAGNET_RADIUS):
 				attract()
 		elif distance <= WARNING_DISTANCE:
 			_warn_full()

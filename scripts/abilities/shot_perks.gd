@@ -56,6 +56,10 @@ static func perks_for(shot_type: int) -> Array[String]:
 	return found
 
 
+static func short_key(perk_id: String) -> String:
+	return "perk.short.%s" % perk_id
+
+
 static func name_key(perk_id: String) -> String:
 	return "perk.%s" % perk_id
 

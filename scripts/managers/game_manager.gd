@@ -5,7 +5,7 @@ signal settings_changed
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "3.3.1"
+const VERSION: String = "3.5.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"

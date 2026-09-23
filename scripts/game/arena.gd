@@ -142,17 +142,15 @@ func _on_wave_completed(_wave: int) -> void:
 		(drop as PaintDrop).attract()
 	for orb in get_tree().get_nodes_in_group(BossOrb.GROUP):
 		(orb as BossOrb).dissolve()
-	for flask in get_tree().get_nodes_in_group(PaintFlask.GROUP):
-		(flask as PaintFlask).attract()
 
 
-func _on_progression_due(wave: int, stats_only: bool) -> void:
+func _on_progression_due(wave: int, attack_only: bool) -> void:
 	await _gather_drops()
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).collect()
 	while get_tree().paused:
 		await get_tree().process_frame
-	progression_screen.open(wave, ability_controller.get_abilities(), player, stats_only)
+	progression_screen.open(wave, ability_controller.get_abilities(), player, attack_only)
 
 
 func _gather_drops() -> void:
