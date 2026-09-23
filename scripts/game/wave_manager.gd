@@ -37,6 +37,8 @@ const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 
 @export var spawn_attempts: int = 16
 
+var _last_boss_spot: Vector2 = Vector2.ZERO
+
 @export var common_weight_base: float = 0.50
 @export var common_weight_per_wave: float = -0.008
 @export var fast_weight_base: float = 0.30
@@ -134,13 +136,16 @@ func _on_enemy_split(child: EnemyBase) -> void:
 	_alive += 1
 
 
-func _on_enemy_died(_enemy: EnemyBase) -> void:
+func _on_enemy_died(enemy: EnemyBase) -> void:
 	_alive -= 1
+	if enemy != null and enemy.is_boss:
+		_last_boss_spot = enemy.global_position
 	if _to_spawn <= 0 and _alive <= 0:
 		_complete_wave()
 
 
 func _complete_wave() -> void:
+	_drop_palette_coin()
 	wave_completed.emit(current_wave)
 	if current_wave % waves_per_progression == 0:
 		_waiting_progression = true
@@ -148,6 +153,18 @@ func _complete_wave() -> void:
 		return
 	await get_tree().create_timer(time_between_waves).timeout
 	_start_wave(current_wave + 1)
+
+
+func _drop_palette_coin() -> void:
+	if not is_boss_wave(current_wave):
+		return
+	var container: Node2D = get_tree().get_first_node_in_group(PaintDrop.CONTAINER_GROUP) as Node2D
+	if container == null:
+		push_warning("[WaveManager] Sem container de drops; a paleta do chefe não caiu.")
+		return
+	var coin: PaletteCoin = PaletteCoin.new()
+	coin.position = container.to_local(_last_boss_spot)
+	container.add_child(coin)
 
 
 func resume_after_progression() -> void:

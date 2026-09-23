@@ -9,6 +9,9 @@ const HOMING_CONE: float = 0.25
 const HOMING_CLOSE_BOOST: float = 2.5
 const PROJECTILE_SCENE_PATH: String = "res://scenes/abilities/projectile.tscn"
 const BLAST_PAINT_FRACTION: float = 0.45
+const TINT_SHADER: Shader = preload("res://assets/shaders/fusion_tint.gdshader")
+const TINT_MIN_SATURATION: float = 0.12
+const TINT_SATURATION_BOOST: float = 0.45
 
 @export var speed: float = 600.0
 
@@ -36,12 +39,20 @@ var shard_count: int = 0
 
 var is_critical: bool = false
 
+var tint_color: Color = Color(0, 0, 0, 0)
+
+var zigzag_swing: float = 0.0
+
+var burst_radius: float = 0.0
+
 var _has_impacted: bool = false
 var _travelled: float = 0.0
 var _homing_target: EnemyBase = null
 var _homing_lost: bool = false
 var _last_hit: Node = null
 var _burst_done: bool = false
+var _zigzag_side: float = 1.0
+var _zigzag_timer: float = FlaskEffects.ZIGZAG_INTERVAL * 0.5
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -63,6 +74,8 @@ func _ready() -> void:
 
 	rotation = direction.angle()
 	scale = Vector2.ONE * size_scale
+	if tint_color.a > 0.0:
+		_apply_tint()
 
 
 func _physics_process(delta: float) -> void:
@@ -72,9 +85,28 @@ func _physics_process(delta: float) -> void:
 		_steer_toward_target(delta)
 	var step: float = speed * delta
 	global_position += direction * step
+	if zigzag_swing > 0.0:
+		global_position += _zigzag_offset(delta)
 	_travelled += step
 	if _travelled >= max_distance:
 		_finish_impact()
+
+
+func _zigzag_offset(delta: float) -> Vector2:
+	_zigzag_timer -= delta
+	if _zigzag_timer <= 0.0:
+		_zigzag_timer = FlaskEffects.ZIGZAG_INTERVAL
+		_zigzag_side = -_zigzag_side
+	return direction.orthogonal() * zigzag_swing * _zigzag_side * delta
+
+
+func _apply_tint() -> void:
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = TINT_SHADER
+	material.set_shader_parameter("target_hue", tint_color.h)
+	material.set_shader_parameter("min_saturation", TINT_MIN_SATURATION)
+	material.set_shader_parameter("saturation_boost", TINT_SATURATION_BOOST)
+	sprite.material = material
 
 
 func _steer_toward_target(delta: float) -> void:
@@ -124,6 +156,7 @@ func _on_body_entered(body: Node2D) -> void:
 		if is_critical:
 			AudioManager.play_critical_hit()
 		_apply_hit_perks(enemy, dealt, enemy_max_hp)
+		_burst_on(enemy)
 		_paint_impact(global_position)
 		if pierce_remaining > 0:
 			pierce_remaining -= 1
@@ -162,6 +195,24 @@ func _apply_hit_perks(enemy: EnemyBase, dealt: float, enemy_max_hp: float) -> vo
 		_blast(enemy)
 	if shard_count > 0:
 		_spawn_shards(enemy)
+
+
+func _burst_on(center: EnemyBase) -> void:
+	if burst_radius <= 0.0:
+		return
+	burst_radius = 0.0
+	var radius: float = FlaskEffects.BURST_RADIUS * size_scale
+	var radius_squared: float = radius * radius
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy: EnemyBase = node as EnemyBase
+		if enemy == null or enemy == center or enemy.is_queued_for_deletion():
+			continue
+		if enemy.global_position.distance_squared_to(global_position) <= radius_squared:
+			enemy.take_damage(damage * FlaskEffects.BURST_DAMAGE, false)
+	var canvas: PaintCanvas = get_tree().get_first_node_in_group("paint_canvas") as PaintCanvas
+	if canvas != null:
+		canvas.paint_circle(global_position, radius * FlaskEffects.BURST_PAINT, _get_paint_color())
+	AudioManager.play_enemy_explode()
 
 
 func _blast(center: EnemyBase) -> void:
@@ -244,6 +295,8 @@ func _paint_impact(impact_position: Vector2) -> void:
 
 
 func _get_paint_color() -> Color:
+	if tint_color.a > 0.0:
+		return tint_color
 	var texture: Texture2D = sprite.texture
 	if texture == null:
 		return Color(0.2, 0.2, 0.2, 1.0)

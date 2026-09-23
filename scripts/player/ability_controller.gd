@@ -10,6 +10,9 @@ const PROJECTILE_BASE_SCALE: float = 1.5
 const CHARGE_PREVIEW_ALPHA: float = 0.6
 const CHARGE_BLINK_SPEED: float = 16.0
 const CHARGE_BLINK_ALPHA: float = 0.35
+const TINT_SHADER: Shader = preload("res://assets/shaders/fusion_tint.gdshader")
+const TINT_MIN_SATURATION: float = 0.12
+const TINT_SATURATION_BOOST: float = 0.45
 
 @export var cooldown: float = 1.0
 
@@ -145,10 +148,35 @@ func add_perk(perk_id: String) -> bool:
 	return true
 
 
+func _flask_effects() -> Array[String]:
+	if _player == null or _player.flask_belt == null:
+		return []
+	return _player.flask_belt.active_effects()
+
+
+func _apply_flask_effects(projectile: Projectile, effects: Array[String]) -> void:
+	if effects.is_empty():
+		return
+	projectile.tint_color = _player.flask_belt.active_color()
+	projectile.damage *= FlaskEffects.damage(effects)
+	if effects.has(FlaskEffects.ZIGZAG):
+		projectile.zigzag_swing = FlaskEffects.ZIGZAG_SWING
+	if effects.has(FlaskEffects.RUSH):
+		projectile.speed *= FlaskEffects.RUSH_SHOT_SPEED
+	if effects.has(FlaskEffects.BURST):
+		projectile.burst_radius = FlaskEffects.BURST_RADIUS
+		projectile.size_scale *= FlaskEffects.BURST_SIZE
+	if effects.has(FlaskEffects.ORBIT):
+		projectile.homing_turn_rate = maxf(projectile.homing_turn_rate, FlaskEffects.ORBIT_TURN_RATE)
+
+
 func _fire_rate_multiplier() -> float:
+	var multiplier: float = 1.0
 	if has_perk("momentum") and _player.is_moving():
-		return 1.0 + ShotPerks.MOMENTUM_RATE_BONUS
-	return 1.0
+		multiplier += ShotPerks.MOMENTUM_RATE_BONUS
+	if _player.flask_belt != null:
+		multiplier *= _player.flask_belt.fire_rate_multiplier()
+	return multiplier
 
 
 func _on_player_died() -> void:
@@ -194,6 +222,7 @@ func _update_charge_preview(aim_direction: Vector2, delta: float) -> void:
 	if _preview_index != data.ability_index:
 		_preview_index = data.ability_index
 		_charge_preview.texture = GameManager.get_ability_texture(data.ability_index)
+	_tint_charge_preview()
 	_charge_preview.visible = true
 	_charge_preview.position = aim_direction * spawn_offset
 	_charge_preview.rotation = aim_direction.angle()
@@ -207,10 +236,28 @@ func _update_charge_preview(aim_direction: Vector2, delta: float) -> void:
 	_charge_preview.modulate = Color(1.0, 1.0, 1.0, 1.0 if bright else CHARGE_BLINK_ALPHA)
 
 
+func _tint_charge_preview() -> void:
+	var color: Color = Color(0, 0, 0, 0)
+	if _player.flask_belt != null and _player.flask_belt.is_active():
+		color = _player.flask_belt.active_color()
+	if color.a <= 0.0:
+		_charge_preview.material = null
+		return
+	var material: ShaderMaterial = _charge_preview.material as ShaderMaterial
+	if material == null:
+		material = ShaderMaterial.new()
+		material.shader = TINT_SHADER
+		_charge_preview.material = material
+	material.set_shader_parameter("target_hue", color.h)
+	material.set_shader_parameter("min_saturation", TINT_MIN_SATURATION)
+	material.set_shader_parameter("saturation_boost", TINT_SATURATION_BOOST)
+
+
 func _fire_ability(data: AbilityData, base_direction: Vector2) -> void:
 	var texture: ImageTexture = GameManager.get_ability_texture(data.ability_index)
 	var count: int = maxi(data.projectile_count, 1)
 	var spread: float = deg_to_rad(FAN_SPREAD_DEGREES)
+	var flask_effects: Array[String] = _flask_effects()
 
 	AudioManager.play_shoot()
 
@@ -235,6 +282,7 @@ func _fire_ability(data: AbilityData, base_direction: Vector2) -> void:
 		if has_perk("critical") and randf() < ShotPerks.critical_chance(data.projectile_speed / projectile_speed):
 			projectile.damage *= ShotPerks.CRIT_MULTIPLIER
 			projectile.is_critical = true
+		_apply_flask_effects(projectile, flask_effects)
 		projectile.position = _player.global_position + fire_direction * spawn_offset
 
 		var container: Node = get_tree().get_first_node_in_group("projectiles_container")

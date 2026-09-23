@@ -145,6 +145,10 @@ func _on_wave_completed(_wave: int) -> void:
 		(drop as PaintDrop).attract()
 	for orb in get_tree().get_nodes_in_group(BossOrb.GROUP):
 		(orb as BossOrb).dissolve()
+	for flask in get_tree().get_nodes_in_group(PaintFlask.GROUP):
+		(flask as PaintFlask).attract()
+	for coin in get_tree().get_nodes_in_group(PaletteCoin.GROUP):
+		(coin as PaletteCoin).attract()
 
 
 func _on_progression_due(wave: int) -> void:
@@ -152,6 +156,8 @@ func _on_progression_due(wave: int) -> void:
 	await _gather_drops()
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).collect()
+	for coin in get_tree().get_nodes_in_group(PaletteCoin.GROUP):
+		(coin as PaletteCoin).collect()
 	while get_tree().paused:
 		await get_tree().process_frame
 	progression_screen.open(wave, ability_controller.get_abilities(), player)
@@ -160,6 +166,8 @@ func _on_progression_due(wave: int) -> void:
 func _gather_drops() -> void:
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).attract()
+	for coin in get_tree().get_nodes_in_group(PaletteCoin.GROUP):
+		(coin as PaletteCoin).attract()
 	var waited: float = 0.0
 	while waited < DROP_GATHER_TIMEOUT and _drops_on_the_way() > 0:
 		await get_tree().process_frame

@@ -86,7 +86,7 @@ phase_offset = 0.8
 [node name="QuickPlayButton" type="Button" parent="CenterContainer/MenuContainer"]
 custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 14
 text = "QUICK PLAY"
 script = ExtResource("5_float")
 amplitude_pixels = 3.0
@@ -96,7 +96,7 @@ phase_offset = 1.2
 [node name="SettingsButton" type="Button" parent="CenterContainer/MenuContainer"]
 custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 14
 text = "SETTINGS"
 script = ExtResource("5_float")
 amplitude_pixels = 3.0

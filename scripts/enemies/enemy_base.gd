@@ -142,6 +142,7 @@ const RECOLOR_MIN_SATURATION: float = 0.15
 const ORB_FIRST_DELAY_MIN: float = 0.9
 const ORB_FIRST_DELAY_MAX: float = 2.0
 const ORB_INTERVAL_SPREAD: float = 0.15
+const FLASK_DROP_CHANCE: float = 0.06
 const FUSION_SHADER: Shader = preload("res://assets/shaders/fusion_tint.gdshader")
 const FUSION_GROUP: String = "fused_enemies"
 const FUSION_CHANCE: float = 0.25
@@ -207,6 +208,7 @@ var explosion_radius: float = 0.0
 var explosion_damage: float = 0.0
 var explosion_paint_radius: float = 0.0
 var ink_drop_chance: float = 0.0
+var flask_effects: Array[String] = []
 var is_boss: bool = false
 var shard_count: int = 0
 var shard_generations: int = 0
@@ -290,6 +292,10 @@ func _apply_preset() -> void:
 	explosion_damage = preset.get("explosion_damage", 0.0) * shrink
 	explosion_paint_radius = preset.get("explosion_paint_radius", 0.0) * shrink
 	ink_drop_chance = preset.get("ink_drop_chance", 0.0)
+	if flask_effects.is_empty():
+		var effect: String = FlaskEffects.for_type(enemy_type)
+		if effect != "":
+			flask_effects = [effect]
 	is_boss = preset.get("boss", false)
 	shard_count = preset.get("shard_count", 0)
 	shard_generations = preset.get("shard_generations", 0)
@@ -852,6 +858,7 @@ func _split() -> void:
 		child.hp_scale = hp_scale
 		if fusion_tinted:
 			child.tint_override = trail_color
+		child.flask_effects = flask_effects.duplicate()
 		child.position = global_position + Vector2.from_angle(heading + PI * i) * collision_radius
 		child.set_arena_bounds(_arena_bounds)
 		container.add_child.call_deferred(child)
@@ -928,6 +935,7 @@ func _die() -> void:
 		_explode()
 	_splat_on_death()
 	_drop_ink()
+	_drop_flask()
 	AudioManager.play_enemy_death()
 	died.emit(self)
 
@@ -955,6 +963,18 @@ func _drop_ink() -> void:
 		drop.setup(trail_color)
 		drop.position = container.to_local(global_position)
 		container.add_child(drop)
+
+
+func _drop_flask() -> void:
+	if is_boss or flask_effects.is_empty() or randf() >= FLASK_DROP_CHANCE * float(fusion_tier + 1):
+		return
+	var container: Node2D = get_tree().get_first_node_in_group(PaintDrop.CONTAINER_GROUP) as Node2D
+	if container == null:
+		return
+	var flask: PaintFlask = PaintFlask.new()
+	flask.setup(trail_color, flask_effects)
+	flask.position = container.to_local(global_position)
+	container.add_child(flask)
 
 
 func can_fuse() -> bool:
@@ -1007,6 +1027,10 @@ func _absorb(absorbed: EnemyBase) -> void:
 		trail_color = PaintCanvas.mix_colors(PaintCanvas.flatten(own_color), PaintCanvas.flatten(other_color))
 		fusion_tinted = true
 		_apply_fusion_tint()
+
+	for effect in absorbed.flask_effects:
+		if not flask_effects.has(effect):
+			flask_effects.append(effect)
 
 	add_to_group(FUSION_GROUP)
 	_build_fusion_aura()

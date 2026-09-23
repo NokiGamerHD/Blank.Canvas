@@ -55,6 +55,13 @@ const FOOTING_DEMO_WALK: float = 0.5
 @export var showcase_best_wave: int = 17
 
 
+const FLASK_DEMO_DISTANCE: float = 120.0
+const FLASK_DEMO_COIN_DISTANCE: float = 200.0
+const FLASK_DEMO_SETTLE: float = 0.45
+const FLASK_DEMO_SHOT_GAP: float = 0.12
+const FLASK_DEMO_GLOW: float = 0.3
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var language: String = OS.get_environment("SHOT_LANG")
@@ -152,7 +159,12 @@ func _capture_main_menu() -> void:
 func _capture_creators() -> void:
 	var character: Node = _show_scene(GameManager.SCENE_CHARACTER_CREATOR)
 	if character != null:
+		var saved_palettes: int = GameManager.palettes
+		GameManager.palettes = 3
+		character.call("_refresh_flask_shop")
 		await _capture("08_criador_personagem")
+		GameManager.palettes = saved_palettes
+		character.call("_refresh_flask_shop")
 		if character.open_color_dialog():
 			await _capture("11_seletor_de_cor")
 		await _clear_scene(character)
@@ -209,6 +221,7 @@ func _capture_arena() -> void:
 	await _capture_hurt_edges_demo(arena)
 	await _capture_boss_demo(arena)
 	await _capture_fusion_demo(arena)
+	await _capture_flask_demo(arena)
 
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
@@ -511,6 +524,59 @@ func _capture_hurt_edges_demo(arena: Arena) -> void:
 	arena.player._invulnerable_timer = 0.0
 	arena.player.take_damage(12.0)
 	await _capture_immediately("32_borda_de_dano")
+	_keep_player_alive(arena)
+
+
+func _capture_flask_demo(arena: Arena) -> void:
+	for child in arena.enemies_container.get_children():
+		child.queue_free()
+	var saved_slots: int = GameManager.flask_slots
+	var saved_palettes: int = GameManager.palettes
+	GameManager.flask_slots = 3
+	GameManager.palettes = 2
+	arena.hud.flask_bar().refresh()
+	arena.hud.update_palettes()
+
+	var colors: Array[Color] = [Color("b43434"), Color("0b35dc"), Color("15b10f"), Color("e0b400")]
+	var effects: Array[String] = [
+		FlaskEffects.ZIGZAG, FlaskEffects.RUSH, FlaskEffects.BURST, FlaskEffects.ORBIT]
+	for index in colors.size():
+		var flask: PaintFlask = PaintFlask.new()
+		flask.setup(colors[index], [effects[index]])
+		flask.position = arena.drops_container.to_local(arena.player.global_position
+			+ Vector2.from_angle(PI * 0.75 + TAU * float(index) / 6.0) * FLASK_DEMO_DISTANCE)
+		arena.drops_container.add_child(flask)
+	var coin: PaletteCoin = PaletteCoin.new()
+	coin.position = arena.drops_container.to_local(arena.player.global_position
+		+ Vector2(0.0, -FLASK_DEMO_COIN_DISTANCE))
+	arena.drops_container.add_child(coin)
+
+	arena.player.flask_belt.store(Color("0b35dc"), [FlaskEffects.RUSH])
+	arena.player.flask_belt.store(Color("e0b400"), [FlaskEffects.ORBIT])
+	await get_tree().create_timer(FLASK_DEMO_SETTLE).timeout
+	await _capture("39_frascos_e_paleta")
+
+	for child in arena.drops_container.get_children():
+		child.queue_free()
+	arena.player.flask_belt.slots.clear()
+	arena.player.flask_belt.store(Color("b43434"), [FlaskEffects.ZIGZAG])
+	arena.player.flask_belt.use(0)
+	arena.player.set_aim_override(arena.player.global_position + Vector2(260.0, -40.0))
+	await get_tree().create_timer(FLASK_DEMO_GLOW).timeout
+	for shot in 3:
+		arena.ability_controller._fire_ability(arena.ability_controller.abilities[0], Vector2(0.9, -0.15).normalized())
+		await get_tree().create_timer(FLASK_DEMO_SHOT_GAP).timeout
+	var edges: ScreenEdges = arena.hud.screen_edges()
+	for bolt in 3:
+		edges._spawn_bolt()
+	await _capture_immediately("40_efeito_do_frasco")
+
+	arena.player.flask_belt._clear_effect()
+	arena.player.flask_belt.slots.clear()
+	arena.hud.flask_bar().refresh()
+	GameManager.flask_slots = saved_slots
+	GameManager.palettes = saved_palettes
+	arena.hud.update_palettes()
 	_keep_player_alive(arena)
 
 

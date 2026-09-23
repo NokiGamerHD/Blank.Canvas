@@ -5,7 +5,7 @@ signal settings_changed
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "3.1.0"
+const VERSION: String = "3.2.4"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -25,6 +25,8 @@ const SETTINGS_PATH: String = "user://settings.cfg"
 const SHOT_TYPES_SECTION: String = "shot_types"
 const PROGRESS_SECTION: String = "progress"
 const BEST_WAVE_KEY: String = "best_wave"
+const PALETTES_KEY: String = "palettes"
+const FLASK_SLOTS_KEY: String = "flask_slots"
 const PALETTE_SECTION: String = "palette"
 const CUSTOM_COLORS_KEY: String = "custom_colors"
 const MAX_CUSTOM_COLORS: int = 10
@@ -53,6 +55,10 @@ var last_canvas_coverage: float = 0.0
 var last_saved_scenario_path: String = ""
 
 var best_wave: int = 0
+
+var palettes: int = 0
+
+var flask_slots: int = FlaskEffects.START_SLOTS
 
 var last_run_was_record: bool = false
 
@@ -280,17 +286,44 @@ func set_wave_reached(wave: int) -> void:
 	_save_progress()
 
 
+func add_palettes(amount: int) -> void:
+	if amount <= 0:
+		return
+	palettes += amount
+	_save_progress()
+	settings_changed.emit()
+
+
+func can_buy_flask_slot() -> bool:
+	return flask_slots < FlaskEffects.MAX_SLOTS and palettes >= FlaskEffects.SLOT_PRICE
+
+
+func buy_flask_slot() -> bool:
+	if not can_buy_flask_slot():
+		return false
+	palettes -= FlaskEffects.SLOT_PRICE
+	flask_slots += 1
+	_save_progress()
+	settings_changed.emit()
+	return true
+
+
 func _load_progress() -> void:
 	var settings: ConfigFile = ConfigFile.new()
 	if settings.load(SETTINGS_PATH) != OK:
 		return
 	best_wave = settings.get_value(PROGRESS_SECTION, BEST_WAVE_KEY, 0)
+	palettes = maxi(int(settings.get_value(PROGRESS_SECTION, PALETTES_KEY, 0)), 0)
+	flask_slots = clampi(int(settings.get_value(PROGRESS_SECTION, FLASK_SLOTS_KEY, FlaskEffects.START_SLOTS)),
+		FlaskEffects.START_SLOTS, FlaskEffects.MAX_SLOTS)
 
 
 func _save_progress() -> void:
 	var settings: ConfigFile = ConfigFile.new()
 	settings.load(SETTINGS_PATH)
 	settings.set_value(PROGRESS_SECTION, BEST_WAVE_KEY, best_wave)
+	settings.set_value(PROGRESS_SECTION, PALETTES_KEY, palettes)
+	settings.set_value(PROGRESS_SECTION, FLASK_SLOTS_KEY, flask_slots)
 	var save_error: int = settings.save(SETTINGS_PATH)
 	if save_error != OK:
 		push_warning("[GameManager] Não foi possível salvar o recorde (erro %d)." % save_error)

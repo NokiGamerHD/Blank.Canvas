@@ -17,6 +17,10 @@ const INK_PICKUP_SOUND: AudioStream = preload("res://assets/audio/ink_pickup.wav
 const ENEMY_MERGE_SOUND: AudioStream = preload("res://assets/audio/enemy_merge.wav")
 const WAVE_START_SOUND: AudioStream = preload("res://assets/audio/wave_start.wav")
 const BOSS_WAVE_SOUND: AudioStream = preload("res://assets/audio/boss_wave.wav")
+const FLASK_PICKUP_SOUND: AudioStream = preload("res://assets/audio/flask_pickup.wav")
+const FLASK_USE_SOUND: AudioStream = preload("res://assets/audio/flask_use.wav")
+const PALETTE_PICKUP_SOUND: AudioStream = preload("res://assets/audio/palette_pickup.wav")
+const PAINT_STEP_SOUND: AudioStream = preload("res://assets/audio/paint_step.wav")
 const SHOOT_MIN_GAP: float = 0.05
 const HIT_MIN_GAP: float = 0.05
 const ENEMY_DEATH_MIN_GAP: float = 0.06
@@ -27,6 +31,8 @@ const INK_PICKUP_MIN_GAP: float = 0.045
 const ENEMY_MERGE_MIN_GAP: float = 0.12
 const WAVE_START_MIN_GAP: float = 0.3
 const BOSS_WAVE_MIN_GAP: float = 0.3
+const FLASK_PICKUP_MIN_GAP: float = 0.06
+const PAINT_STEP_MIN_GAP: float = 0.3
 const WARM_UP_VOLUME_DB: float = -80.0
 
 const POOL_SIZE: int = 12
@@ -144,6 +150,22 @@ func play_wave_start() -> void:
 
 func play_boss_wave() -> void:
 	_play_spaced(BOSS_WAVE_SOUND, BOSS_WAVE_MIN_GAP)
+
+
+func play_flask_pickup() -> void:
+	_play_spaced(FLASK_PICKUP_SOUND, FLASK_PICKUP_MIN_GAP)
+
+
+func play_flask_use() -> void:
+	_play(FLASK_USE_SOUND)
+
+
+func play_palette_pickup() -> void:
+	_play(PALETTE_PICKUP_SOUND)
+
+
+func play_paint_step() -> void:
+	_play_spaced(PAINT_STEP_SOUND, PAINT_STEP_MIN_GAP)
 
 
 func is_audible() -> bool:
