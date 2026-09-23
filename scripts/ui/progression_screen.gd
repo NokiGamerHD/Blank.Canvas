@@ -3,23 +3,33 @@ extends CanvasLayer
 signal upgrade_chosen
 signal new_ability_chosen
 
+const KIND_SHOT: String = "shot"
+const KIND_PLAYER: String = "player"
+const KIND_PERK: String = "perk"
+
 const UPGRADE_POOL: Array[Dictionary] = [
-	{"id": "damage", "text_key": "upgrade.damage", "global": false},
-	{"id": "cooldown", "text_key": "upgrade.cooldown", "global": false},
-	{"id": "count", "text_key": "upgrade.count", "global": false},
-	{"id": "size", "text_key": "upgrade.size", "global": false},
-	{"id": "pierce", "text_key": "upgrade.pierce", "global": false},
-	{"id": "speed", "text_key": "upgrade.speed", "global": false},
-	{"id": "dash", "text_key": "upgrade.dash", "global": true},
+	{"id": "damage", "text_key": "upgrade.damage", "global": false, "kind": KIND_SHOT},
+	{"id": "cooldown", "text_key": "upgrade.cooldown", "global": false, "kind": KIND_SHOT},
+	{"id": "count", "text_key": "upgrade.count", "global": false, "kind": KIND_SHOT},
+	{"id": "size", "text_key": "upgrade.size", "global": false, "kind": KIND_SHOT},
+	{"id": "pierce", "text_key": "upgrade.pierce", "global": false, "kind": KIND_SHOT},
+	{"id": "speed", "text_key": "upgrade.speed", "global": false, "kind": KIND_SHOT},
+	{"id": "dash", "text_key": "upgrade.dash", "global": true, "kind": KIND_PLAYER},
+	{"id": "max_hp", "text_key": "upgrade.max_hp", "global": true, "kind": KIND_PLAYER},
+	{"id": "move_speed", "text_key": "upgrade.move_speed", "global": true, "kind": KIND_PLAYER},
+	{"id": "pickup", "text_key": "upgrade.pickup", "global": true, "kind": KIND_PLAYER},
 ]
 
-const DAMAGE_MULTIPLIER: float = 1.5
-const COOLDOWN_MULTIPLIER: float = 0.75
-const COUNT_STEP: int = 2
-const SIZE_MULTIPLIER: float = 1.5
-const PIERCE_STEP: int = 2
-const SPEED_MULTIPLIER: float = 1.3
-const DASH_COOLDOWN_MULTIPLIER: float = 0.7
+const DAMAGE_MULTIPLIER: float = 1.35
+const COOLDOWN_MULTIPLIER: float = 0.85
+const COUNT_STEP: int = 1
+const SIZE_MULTIPLIER: float = 1.3
+const PIERCE_STEP: int = 1
+const SPEED_MULTIPLIER: float = 1.2
+const DASH_COOLDOWN_MULTIPLIER: float = 0.6
+const MAX_HP_STEP: float = 45.0
+const MOVE_SPEED_MULTIPLIER: float = 1.2
+const PICKUP_MULTIPLIER: float = 1.6
 
 const MAX_PROJECTILE_COUNT: int = 9
 const MAX_SIZE_SCALE: float = 3.0
@@ -30,6 +40,10 @@ const OPTION_COUNT: int = 3
 const PERK_FACE_COLOR: Color = Color(1.0, 0.9, 0.62, 1.0)
 const PERK_HOVER_COLOR: Color = Color(0.96, 0.82, 0.48, 1.0)
 const PERK_BORDER_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
+const SHOT_FACE_COLOR: Color = Color(0.72, 0.87, 0.97, 1.0)
+const SHOT_HOVER_COLOR: Color = Color(0.58, 0.79, 0.94, 1.0)
+const PLAYER_FACE_COLOR: Color = Color(0.98, 0.74, 0.86, 1.0)
+const PLAYER_HOVER_COLOR: Color = Color(0.95, 0.6, 0.78, 1.0)
 const PERK_BUTTON_HEIGHT: float = 46.0
 const PERK_LINE_SPACING: int = 5
 const PERK_NAME_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
@@ -67,7 +81,7 @@ var _player: Player = null
 var _controller: AbilityController = null
 var _current_wave: int = 5
 var _rerolls: int = 0
-var _stats_only: bool = false
+var _attack_only: bool = false
 var _options_built: bool = false
 var _ink_label: Label = null
 var _new_ability_content: HBoxContainer = null
@@ -94,16 +108,16 @@ func _ready() -> void:
 
 
 func open(wave: int, abilities: Array[AbilityData], player: Player = null,
-		stats_only: bool = false) -> void:
+		attack_only: bool = false) -> void:
 	_abilities = abilities
 	_player = player
 	_controller = player.get_node_or_null("AbilityController") as AbilityController if player != null else null
 	_current_wave = wave
 	_rerolls = 0
 	_options_built = false
-	_stats_only = stats_only
+	_attack_only = attack_only
 	title_label.text = LocalizationManager.text("progression.wave_complete", [_current_wave])
-	if _stats_only:
+	if _attack_only:
 		_on_upgrade_button_pressed()
 	else:
 		_show_choice_page()
@@ -112,8 +126,8 @@ func open(wave: int, abilities: Array[AbilityData], player: Player = null,
 	get_tree().paused = true
 
 
-func is_stats_only() -> bool:
-	return _stats_only
+func is_attack_only() -> bool:
+	return _attack_only
 
 
 func close() -> void:
@@ -165,7 +179,7 @@ func reroll() -> bool:
 
 
 func _show_choice_page() -> void:
-	if _stats_only:
+	if _attack_only:
 		return
 	choice_page.visible = true
 	upgrade_page.visible = false
@@ -275,7 +289,7 @@ func _on_upgrade_button_pressed() -> void:
 		_build_upgrade_options()
 	choice_page.visible = false
 	upgrade_page.visible = true
-	back_to_choice_button.visible = not _stats_only
+	back_to_choice_button.visible = not _attack_only
 	_refresh_shop()
 
 
@@ -283,15 +297,22 @@ func _build_upgrade_options() -> void:
 	for child in upgrade_options.get_children():
 		child.queue_free()
 
+	var wanted: String = KIND_SHOT if _attack_only else KIND_PLAYER
 	var rest: Array[Dictionary] = []
 	for entry in UPGRADE_POOL:
 		if entry["global"] and _player == null:
 			continue
+		if entry["kind"] != wanted:
+			continue
 		rest.append(entry)
 
 	var perk_pool: Array[Dictionary] = []
-	if not _stats_only:
+	if not _attack_only:
 		perk_pool = _available_perk_entries()
+	if rest.is_empty() and perk_pool.is_empty():
+		for entry in UPGRADE_POOL:
+			if entry["kind"] == KIND_SHOT:
+				rest.append(entry)
 	perk_pool.shuffle()
 	var chosen: Array[Dictionary] = []
 	if not perk_pool.is_empty():
@@ -328,6 +349,17 @@ func _build_upgrade_options() -> void:
 			if _abilities.size() > 1 and not entry["global"]:
 				label = "%s: %s" % [target.display_name(), label]
 			button.text = label
+			var face: Color = SHOT_FACE_COLOR
+			var hover: Color = SHOT_HOVER_COLOR
+			if entry.get("kind", KIND_SHOT) == KIND_PLAYER:
+				face = PLAYER_FACE_COLOR
+				hover = PLAYER_HOVER_COLOR
+			button.add_theme_stylebox_override("normal", _perk_style(face))
+			button.add_theme_stylebox_override("hover", _perk_style(hover))
+			button.add_theme_stylebox_override("pressed", _perk_style(hover))
+			button.add_theme_color_override("font_color", PERK_NAME_COLOR)
+			button.add_theme_color_override("font_hover_color", PERK_NAME_COLOR)
+			button.add_theme_color_override("font_pressed_color", PERK_NAME_COLOR)
 		button.pressed.connect(_on_upgrade_option_pressed.bind(entry["id"], target))
 		upgrade_options.add_child(button)
 	_options_built = true
@@ -393,5 +425,21 @@ func _apply_upgrade(upgrade_id: String, data: AbilityData) -> void:
 				push_warning("[ProgressionScreen] Upgrade de dash sem jogador; ignorado.")
 				return
 			_player.reduce_dash_cooldown(DASH_COOLDOWN_MULTIPLIER)
+		"max_hp":
+			if _player == null:
+				push_warning("[ProgressionScreen] Upgrade de vida sem jogador; ignorado.")
+				return
+			_player.max_hp += MAX_HP_STEP
+			_player.heal(MAX_HP_STEP)
+		"move_speed":
+			if _player == null:
+				push_warning("[ProgressionScreen] Upgrade de velocidade sem jogador; ignorado.")
+				return
+			_player.max_speed *= MOVE_SPEED_MULTIPLIER
+		"pickup":
+			if _player == null:
+				push_warning("[ProgressionScreen] Upgrade de coleta sem jogador; ignorado.")
+				return
+			_player.pickup_bonus *= PICKUP_MULTIPLIER
 		_:
 			push_warning("[ProgressionScreen] Upgrade desconhecido: %s" % upgrade_id)

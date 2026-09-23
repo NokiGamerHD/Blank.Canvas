@@ -20,8 +20,11 @@ const DAB_COLORS: Dictionary = {
 	"b": Color("0b35dc"),
 	"g": Color("15b10f"),
 }
-const PIXEL_SCALE: int = 3
-const COLLECT_DISTANCE: float = 22.0
+const PIXEL_SCALE: int = 2
+const MAGNET_RADIUS: float = 110.0
+const COLLECT_DISTANCE: float = 14.0
+const FLY_START_SPEED: float = 150.0
+const FLY_ACCELERATION: float = 2200.0
 const POP_TIME: float = 0.3
 const POP_HEIGHT: float = 22.0
 const FLOAT_SPEED: float = 2.2
@@ -35,6 +38,8 @@ var _sprite: Sprite2D = null
 var _hop_tween: Tween = null
 var _landed: bool = false
 var _collected: bool = false
+var _flying: bool = false
+var _speed: float = 0.0
 var _float_time: float = 0.0
 var _shine_time: float = 0.0
 var _player: Player = null
@@ -61,17 +66,40 @@ func _process(delta: float) -> void:
 	if _collected:
 		return
 	_shine_time += delta * SHINE_SPEED
-	_float_time += delta * FLOAT_SPEED
 	_sprite.modulate = Color(1.0, 1.0, 1.0, 1.0).lerp(
 		Color(SHINE_MIN, SHINE_MIN, SHINE_MIN, 1.0), (sin(_shine_time) + 1.0) * 0.5)
-	if _landed:
-		_sprite.position.y = roundf(sin(_float_time) * FLOAT_HEIGHT) * float(PIXEL_SCALE)
 
 	var player: Player = _get_player()
 	if player == null or player.is_dead():
 		return
-	if global_position.distance_to(player.global_position) <= COLLECT_DISTANCE:
+	if not _flying:
+		_float_time += delta * FLOAT_SPEED
+		if _landed:
+			_sprite.position.y = roundf(sin(_float_time) * FLOAT_HEIGHT) * float(PIXEL_SCALE)
+		if global_position.distance_to(player.global_position) <= player.pickup_radius(MAGNET_RADIUS):
+			attract()
+		return
+
+	_speed += FLY_ACCELERATION * delta
+	var to_player: Vector2 = player.global_position - global_position
+	var step: float = _speed * delta
+	if to_player.length() <= maxf(COLLECT_DISTANCE, step):
 		collect()
+		return
+	global_position += to_player.normalized() * step
+
+
+func attract() -> void:
+	if _flying or _collected:
+		return
+	_flying = true
+	_speed = FLY_START_SPEED
+	_stop_hop()
+	_sprite.position.y = 0.0
+
+
+func is_flying() -> bool:
+	return _flying
 
 
 func collect() -> void:

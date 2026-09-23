@@ -5,7 +5,7 @@ const PLAYER_SPOT: Vector2 = Vector2(1500.0, 1500.0)
 const CHANCE_SAMPLE: int = 300
 const PANEL_TEXT_WIDTH: float = 150.0
 const WARNING_TEXT_WIDTH: float = 130.0
-const EXPECTED_CHECKS: int = 18
+const EXPECTED_CHECKS: int = 19
 
 var _arena: Arena = null
 var _player: Player = null
@@ -54,6 +54,7 @@ func _ready() -> void:
 	await _check_hud()
 	await _check_paint_stains()
 	await _check_charge_preview_tint()
+	await _check_items_on_map()
 	_check_texts_fit()
 
 	_restore()
@@ -400,25 +401,74 @@ func _check_palette_coin() -> void:
 	await _wait(0.6)
 	var coins: Array = get_tree().get_nodes_in_group(PaletteCoin.GROUP)
 	var coin: PaletteCoin = coins[0] as PaletteCoin if not coins.is_empty() else null
-	var stayed: bool = coin != null and GameManager.palettes == 0
-	var size_ok: bool = coin != null and coin._sprite.texture.get_width() >= 30 \
-		and coin._sprite.texture.get_width() <= 48
+	var stayed: bool = coin != null and GameManager.palettes == 0 and not coin.is_flying()
+	var size_ok: bool = coin != null and coin._sprite.texture.get_width() <= 30
 	var heights: Array[float] = []
-	for step in 40:
+	for step in 30:
 		await get_tree().process_frame
 		if coin != null and is_instance_valid(coin):
 			heights.append(coin._sprite.position.y)
-	var floats: bool = heights.min() < heights.max()
+	var floats: bool = not heights.is_empty() and heights.min() < heights.max()
 
 	if coin != null:
-		coin.global_position = _player.global_position
-	await _wait(0.2)
+		coin.global_position = _player.global_position + Vector2(PaletteCoin.MAGNET_RADIUS - 12.0, 0.0)
+	await get_tree().process_frame
+	var flew: bool = coin != null and is_instance_valid(coin) and coin.is_flying()
+	await _wait(0.8)
 	var taken: bool = GameManager.palettes == 1
 	waves.current_wave = 1
-	_report("a paleta fica levitando no chao e so entra ao encostar nela",
-		on_common_wave == 0 and coins.size() == 1 and stayed and size_ok and floats and taken,
-		"wave_comum=%d soltou=%d ficou_no_chao=%s tamanho_ok=%s levitou=%s pegou_ao_encostar=%s" % [
-			on_common_wave, coins.size(), stayed, size_ok, floats, taken])
+	_report("a paleta fica levitando no chao, voa quando o jogador chega perto e entra no save",
+		on_common_wave == 0 and coins.size() == 1 and stayed and size_ok and floats and flew and taken,
+		"wave_comum=%d soltou=%d ficou_no_chao=%s tamanho=%d levitou=%s voou=%s pegou=%s" % [
+			on_common_wave, coins.size(), stayed,
+			coin._sprite.texture.get_width() if coin != null and is_instance_valid(coin) else 0,
+			floats, flew, taken])
+
+
+func _check_items_on_map() -> void:
+	await _clear()
+	GameManager.flask_slots = 1
+	_belt.store(Color("b43434"), [FlaskEffects.ZIGZAG])
+	var flask: PaintFlask = PaintFlask.new()
+	flask.setup(Color("15b10f"), [FlaskEffects.BURST])
+	flask.position = PLAYER_SPOT + Vector2(420.0, 0.0)
+	_arena.drops_container.add_child(flask)
+	await _wait(0.5)
+	var spot: Vector2 = flask.global_position
+
+	_arena._on_wave_completed(3)
+	await _wait(0.6)
+	var stayed: bool = is_instance_valid(flask) and not flask.is_flying() \
+		and flask.global_position.distance_to(spot) < 2.0
+
+	var minimap: Minimap = _arena.hud.minimap
+	minimap._collect_item_positions()
+	var on_minimap: int = minimap.item_count()
+
+	var overlay: MapOverlay = _arena.hud.map_overlay()
+	var closed: bool = not overlay.is_open()
+	Input.action_press(MapOverlay.ACTION)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var opened: bool = overlay.is_open()
+	var items_on_map: int = overlay.item_count()
+	var still_alpha: float = overlay.alpha()
+	_player.velocity = Vector2(300.0, 0.0)
+	for step in 20:
+		_player.velocity = Vector2(300.0, 0.0)
+		await get_tree().process_frame
+	var moving_alpha: float = overlay.alpha()
+	Input.action_release(MapOverlay.ACTION)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var closed_again: bool = not overlay.is_open()
+	_player.velocity = Vector2.ZERO
+
+	_report("frasco fica onde caiu, aparece no minimapa, e o TAB abre o mapa que some ao soltar",
+		stayed and on_minimap >= 1 and closed and opened and items_on_map >= 1
+			and moving_alpha < still_alpha and closed_again,
+		"ficou=%s no_minimapa=%d abriu=%s itens_no_mapa=%d alfa_parado=%.2f alfa_andando=%.2f fechou=%s" % [
+			stayed, on_minimap, opened, items_on_map, still_alpha, moving_alpha, closed_again])
 
 
 func _check_shop() -> void:

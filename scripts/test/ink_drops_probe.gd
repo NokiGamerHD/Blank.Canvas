@@ -40,6 +40,7 @@ func _ready() -> void:
 	await _check_new_ability_purchase()
 	await _check_progression_cadence()
 	await _check_drop_heals()
+	_check_upgrade_kinds()
 	_check_texts_fit()
 
 	get_tree().paused = false
@@ -321,35 +322,54 @@ func _check_progression_cadence() -> void:
 	_clear()
 	var waves: WaveManager = _arena.wave_manager
 	var kinds: Array[String] = []
-	var expected: Array[String] = ["-", "S", "-", "S", "F", "S", "-", "S", "-", "F"]
+	var expected: Array[String] = ["-", "A", "-", "A", "F", "A", "-", "A", "-", "F"]
 	for wave in range(1, 11):
 		match waves.progression_for_wave(wave):
 			WaveManager.Progression.FULL:
 				kinds.append("F")
-			WaveManager.Progression.STATS:
-				kinds.append("S")
+			WaveManager.Progression.ATTACK:
+				kinds.append("A")
 			_:
 				kinds.append("-")
 
 	_screen.open(4, _controller.get_abilities(), _player, true)
 	var straight_to_upgrades: bool = _screen.upgrade_page.visible and not _screen.choice_page.visible
 	var no_back: bool = not _screen.back_to_choice_button.visible
-	var golden: int = 0
+	var attack_ids: Array[String] = []
 	for button in _live_options():
-		if str(button.get_meta("upgrade_id", "")).begins_with(_screen.PERK_PREFIX):
-			golden += 1
-	var options: int = _live_options().size()
+		attack_ids.append(str(button.get_meta("upgrade_id", "")))
 	_screen.close()
+
+	var full_ids: Array[String] = []
+	var golden: int = 0
+	for round_index in 8:
+		_screen.open(5, _controller.get_abilities(), _player, false)
+		_screen._on_upgrade_button_pressed()
+		for button in _live_options():
+			var id: String = str(button.get_meta("upgrade_id", ""))
+			full_ids.append(id)
+			if id.begins_with(_screen.PERK_PREFIX):
+				golden += 1
+		_screen.close()
+
+	var shot_ids: Array[String] = ["damage", "cooldown", "count", "size", "pierce", "speed"]
+	var player_ids: Array[String] = ["dash", "max_hp", "move_speed", "pickup"]
+	var attack_pure: bool = attack_ids.size() == 3
+	for id in attack_ids:
+		attack_pure = attack_pure and shot_ids.has(id)
+	var full_pure: bool = not full_ids.is_empty()
+	for id in full_ids:
+		full_pure = full_pure and (id.begins_with(_screen.PERK_PREFIX) or player_ids.has(id))
 
 	_screen.open(5, _controller.get_abilities(), _player, false)
-	var full_has_choice: bool = _screen.choice_page.visible and not _screen.is_stats_only()
+	var full_has_choice: bool = _screen.choice_page.visible and not _screen.is_attack_only()
 	_screen.close()
 
-	_report("wave par abre so upgrade de status, e a de 5 em 5 abre a loja inteira",
-		kinds == expected and straight_to_upgrades and no_back and golden == 0 and options == 3
-			and full_has_choice,
-		"waves 1..10=%s direto_nos_upgrades=%s sem_voltar=%s dourados=%d opcoes=%d loja_inteira=%s" % [
-			"".join(kinds), straight_to_upgrades, no_back, golden, options, full_has_choice])
+	_report("wave par da so upgrade azul de ataque, e a de 5 em 5 da dourado e rosa",
+		kinds == expected and straight_to_upgrades and no_back and attack_pure and full_pure
+			and golden >= 8 and full_has_choice,
+		"waves 1..10=%s so_ataque=%s so_rosa_e_dourado=%s dourados=%d de 8 telas loja_inteira=%s" % [
+			"".join(kinds), attack_pure, full_pure, golden, full_has_choice])
 
 
 func _check_drop_heals() -> void:
@@ -367,6 +387,80 @@ func _check_drop_heals() -> void:
 		is_equal_approx(healed, 40.0 + PaintDrop.HEAL) and is_equal_approx(after_wave, 40.0)
 			and not is_instance_valid(drop),
 		"gota=%.0f->%.0f fim_de_wave=%.0f" % [40.0, healed, after_wave])
+
+
+func _check_upgrade_kinds() -> void:
+	_clear()
+	var kinds: Dictionary = {}
+	for entry in _screen.UPGRADE_POOL:
+		var kind: String = entry["kind"]
+		kinds[kind] = int(kinds.get(kind, 0)) + 1
+	var pool_ok: bool = int(kinds.get(_screen.KIND_SHOT, 0)) == 6 \
+		and int(kinds.get(_screen.KIND_PLAYER, 0)) == 4
+
+	_player.max_hp = 100.0
+	_player.current_hp = 100.0
+	_player.max_speed = 320.0
+	_player.pickup_bonus = 1.0
+	_screen._apply_upgrade("max_hp", _controller.get_abilities()[0])
+	_screen._apply_upgrade("move_speed", _controller.get_abilities()[0])
+	_screen._apply_upgrade("pickup", _controller.get_abilities()[0])
+	var applied: bool = is_equal_approx(_player.max_hp, 100.0 + _screen.MAX_HP_STEP) \
+		and _player.current_hp > 100.0 and _player.max_speed > 320.0 and _player.pickup_bonus > 1.0
+
+	var colors: Dictionary = {}
+	for round_index in 12:
+		_screen.open(4 if round_index % 2 == 0 else 5, _controller.get_abilities(), _player,
+			round_index % 2 == 0)
+		_screen._on_upgrade_button_pressed()
+		for button in _live_options():
+			var id: String = str(button.get_meta("upgrade_id", ""))
+			var style: StyleBoxFlat = button.get_theme_stylebox("normal") as StyleBoxFlat
+			if style == null:
+				colors["sem_estilo"] = true
+				continue
+			var tint: String = "?"
+			if style.bg_color.is_equal_approx(_screen.PERK_FACE_COLOR):
+				tint = "dourado"
+			elif style.bg_color.is_equal_approx(_screen.SHOT_FACE_COLOR):
+				tint = "azul"
+			elif style.bg_color.is_equal_approx(_screen.PLAYER_FACE_COLOR):
+				tint = "rosa"
+			colors[tint] = true
+			if id.begins_with(_screen.PERK_PREFIX) and tint != "dourado":
+				colors["errado"] = true
+			elif id in ["dash", "max_hp", "move_speed", "pickup"] and tint != "rosa":
+				colors["errado"] = true
+			elif id in ["damage", "cooldown", "count", "size", "pierce", "speed"] and tint != "azul":
+				colors["errado"] = true
+		_screen.close()
+
+	var announced: Array[String] = []
+	var numbers: Dictionary = {
+		"upgrade.damage": roundi((_screen.DAMAGE_MULTIPLIER - 1.0) * 100.0),
+		"upgrade.cooldown": roundi((1.0 - _screen.COOLDOWN_MULTIPLIER) * 100.0),
+		"upgrade.count": _screen.COUNT_STEP,
+		"upgrade.size": roundi((_screen.SIZE_MULTIPLIER - 1.0) * 100.0),
+		"upgrade.pierce": _screen.PIERCE_STEP,
+		"upgrade.speed": roundi((_screen.SPEED_MULTIPLIER - 1.0) * 100.0),
+		"upgrade.dash": roundi((1.0 - _screen.DASH_COOLDOWN_MULTIPLIER) * 100.0),
+		"upgrade.max_hp": roundi(_screen.MAX_HP_STEP),
+		"upgrade.move_speed": roundi((_screen.MOVE_SPEED_MULTIPLIER - 1.0) * 100.0),
+		"upgrade.pickup": roundi((_screen.PICKUP_MULTIPLIER - 1.0) * 100.0),
+	}
+	for language in ["en", "pt_BR"]:
+		var table: Dictionary = LocalizationManager.TRANSLATIONS[language]
+		for key in numbers:
+			if not str(table[key]).contains(str(numbers[key])):
+				announced.append("%s %s (esperado %d)" % [language, table[key], numbers[key]])
+
+	_report("upgrades vem em tres cores: dourado especial, azul de tiro e rosa de personagem",
+		pool_ok and applied and colors.has("dourado") and colors.has("azul") and colors.has("rosa")
+			and not colors.has("errado") and not colors.has("sem_estilo") and announced.is_empty(),
+		"pool=%s aplicou=%s cores=%s rotulos_errados=%s" % [
+			pool_ok, applied, colors.keys(), announced])
+	_player.max_hp = 1000000.0
+	_player.current_hp = 1000000.0
 
 
 func _check_texts_fit() -> void:

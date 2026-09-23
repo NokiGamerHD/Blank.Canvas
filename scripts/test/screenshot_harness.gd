@@ -217,7 +217,7 @@ func _capture_arena() -> void:
 	arena.get_node("ProgressionScreen").close()
 	arena.player.add_ink(SHOP_DEMO_INK)
 	arena.get_node("ProgressionScreen").open(4, controller.get_abilities(), arena.player, true)
-	await _capture("41_upgrade_de_status")
+	await _capture("41_upgrade_de_ataque")
 	arena.get_node("ProgressionScreen").close()
 
 	await _capture_ink_drops_demo(arena)
@@ -563,6 +563,21 @@ func _capture_flask_demo(arena: Arena) -> void:
 	arena.player.flask_belt.store(Color("5a08ac"), [FlaskEffects.ZIGZAG, FlaskEffects.RUSH])
 	await get_tree().create_timer(FLASK_DEMO_SETTLE).timeout
 	await _capture("39_frascos_e_paleta")
+
+	var overlay: MapOverlay = arena.hud.map_overlay()
+	arena.player.velocity = Vector2.ZERO
+	arena.player._input_velocity = Vector2.ZERO
+	Input.action_press(MapOverlay.ACTION)
+	await get_tree().create_timer(FLASK_DEMO_SETTLE).timeout
+	arena.player.velocity = Vector2.ZERO
+	arena.player._input_velocity = Vector2.ZERO
+	await get_tree().process_frame
+	await _capture("42_mapa_do_tab")
+	Input.action_release(MapOverlay.ACTION)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if overlay.is_open():
+		push_warning("[ScreenshotHarness] O mapa do TAB não fechou depois do print.")
 
 	for child in arena.drops_container.get_children():
 		child.queue_free()

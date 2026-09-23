@@ -3,13 +3,13 @@ extends Node
 
 signal wave_changed(wave: int)
 signal wave_completed(wave: int)
-signal progression_due(wave: int, stats_only: bool)
+signal progression_due(wave: int, attack_only: bool)
 
 signal boss_spawned(boss: EnemyBase)
 
 const ENEMY_SCENE: PackedScene = preload("res://scenes/enemies/enemy_base.tscn")
 
-enum Progression { NONE, STATS, FULL }
+enum Progression { NONE, ATTACK, FULL }
 
 @export var base_enemies_per_wave: int = 4
 
@@ -17,7 +17,7 @@ enum Progression { NONE, STATS, FULL }
 
 @export var waves_per_progression: int = 5
 
-@export var waves_per_stat_upgrade: int = 2
+@export var waves_per_attack_upgrade: int = 2
 
 @export var boss_wave_interval: int = 10
 
@@ -154,7 +154,7 @@ func _complete_wave() -> void:
 	var kind: Progression = progression_for_wave(current_wave)
 	if kind != Progression.NONE:
 		_waiting_progression = true
-		progression_due.emit(current_wave, kind == Progression.STATS)
+		progression_due.emit(current_wave, kind == Progression.ATTACK)
 		return
 	await get_tree().create_timer(time_between_waves).timeout
 	_start_wave(current_wave + 1)
@@ -163,8 +163,8 @@ func _complete_wave() -> void:
 func progression_for_wave(wave: int) -> Progression:
 	if waves_per_progression > 0 and wave % waves_per_progression == 0:
 		return Progression.FULL
-	if waves_per_stat_upgrade > 0 and wave % waves_per_stat_upgrade == 0:
-		return Progression.STATS
+	if waves_per_attack_upgrade > 0 and wave % waves_per_attack_upgrade == 0:
+		return Progression.ATTACK
 	return Progression.NONE
 
 
