@@ -281,9 +281,9 @@ func _check_rewards() -> void:
 			var c: EnemyBase = _spawn(EnemyBase.EnemyType.COMMON, FAR + Vector2(40.0, 0.0))
 			fused = fused.fuse_with(c)
 		await _wait(0.3)
-		var before: int = _arena.drops_container.get_child_count()
+		var before: int = get_tree().get_nodes_in_group(PaintDrop.GROUP).size()
 		fused._die()
-		counts.append(_arena.drops_container.get_child_count() - before)
+		counts.append(get_tree().get_nodes_in_group(PaintDrop.GROUP).size() - before)
 		await _wait(0.3)
 		_clear()
 	_report("fundido sempre solta gota: nivel 1 solta 2, nivel 2 solta 3",

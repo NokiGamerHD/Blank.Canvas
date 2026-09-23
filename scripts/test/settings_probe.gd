@@ -10,10 +10,18 @@ var _failures: int = 0
 var _saved_shake: bool = true
 var _saved_numbers: bool = true
 var _saved_controls: Dictionary = {}
+var _saved_muted: bool = false
+var _saved_volume: float = 1.0
+var _saved_language: String = ""
+var _saved_fullscreen: bool = false
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_saved_muted = AudioManager.muted
+	_saved_volume = AudioManager.volume
+	_saved_language = LocalizationManager.language_code
+	_saved_fullscreen = GameManager.fullscreen
 	_saved_shake = GameManager.screen_shake
 	_saved_numbers = GameManager.damage_numbers
 	for action in GameManager.REBINDABLE_ACTIONS:
@@ -40,6 +48,7 @@ func _ready() -> void:
 	await _check_wave_banner()
 	await _check_boss_banner()
 	_check_texts_fit()
+	await _check_menu_buttons()
 
 	_restore()
 	print("falhas: %d" % _failures)
@@ -57,6 +66,11 @@ func _wait(seconds: float) -> void:
 
 
 func _restore() -> void:
+	AudioManager.muted = _saved_muted
+	AudioManager.volume = _saved_volume
+	AudioManager.save_settings()
+	LocalizationManager.set_language(_saved_language)
+	GameManager.set_fullscreen(_saved_fullscreen)
 	GameManager.set_screen_shake(_saved_shake)
 	GameManager.set_damage_numbers(_saved_numbers)
 	for action in _saved_controls:
@@ -221,11 +235,50 @@ func _check_boss_banner() -> void:
 	var text: String = banner.text()
 	var boss_sound: bool = AudioManager._last_played.has(AudioManager.BOSS_WAVE_SOUND)
 	var wave_sound: bool = AudioManager._last_played.has(AudioManager.WAVE_START_SOUND)
-	var shook: bool = not player.camera.offset.is_zero_approx()
+	var shook: bool = false
+	for i in 10:
+		if not player.camera.offset.is_zero_approx():
+			shook = true
+			break
+		await get_tree().process_frame
 	await _wait(0.9)
 	_report("wave de chefe tem aviso e som proprios, diferentes da wave comum",
 		text == LocalizationManager.text("hud.boss_banner") and boss_sound and not wave_sound and shook,
 		"texto=%s som_do_chefe=%s som_comum=%s sacudiu=%s" % [text, boss_sound, wave_sound, shook])
+
+
+func _check_menu_buttons() -> void:
+	var menu: Node = load(GameManager.SCENE_MAIN_MENU).instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	var buttons: Array[Button] = [
+		menu.play_button, menu.quick_play_button, menu.settings_button, menu.quit_button,
+	]
+	var keys: Array[String] = ["menu.play", "menu.quick_play", "menu.settings", "menu.quit"]
+	var font_size: int = buttons[0].get_theme_font_size("font_size")
+	var same_size: bool = true
+	for button in buttons:
+		same_size = same_size and button.get_theme_font_size("font_size") == font_size
+
+	var style: StyleBox = buttons[0].get_theme_stylebox("normal")
+	var usable: float = buttons[0].size.x - style.content_margin_left - style.content_margin_right
+	var font: Font = buttons[0].get_theme_font("font")
+	var widest: float = 0.0
+	var widest_text: String = ""
+	for code in LocalizationManager.TRANSLATIONS:
+		var table: Dictionary = LocalizationManager.TRANSLATIONS[code]
+		for key in keys:
+			var width: float = font.get_string_size(
+				str(table[key]), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+			if width > widest:
+				widest = width
+				widest_text = str(table[key])
+	menu.queue_free()
+	_report("os quatro botoes do menu usam a mesma fonte e cabem nos dois idiomas",
+		same_size and widest <= usable,
+		"tamanho=%d mesmo_tamanho=%s mais_largo=%.0f px (%s) de %.0f px uteis" % [
+			font_size, same_size, widest, widest_text, usable])
+	await get_tree().process_frame
 
 
 func _text_width(message: String, font_size: int) -> int:

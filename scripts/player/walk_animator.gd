@@ -17,14 +17,27 @@ extends Sprite2D
 
 var _body: CharacterBody2D = null
 var _base_scale: Vector2 = Vector2.ONE
+var _rest_scale: Vector2 = Vector2.ONE
+var _size_multiplier: float = 1.0
 var _phase: float = 0.0
 
 
 func _ready() -> void:
+	_rest_scale = scale
 	_base_scale = scale
 	_body = get_parent() as CharacterBody2D
 	if _body == null:
 		push_warning("[WalkAnimator] O parent de %s não é um CharacterBody2D; efeito desativado." % name)
+
+
+func set_size_multiplier(value: float) -> void:
+	_size_multiplier = maxf(value, 0.05)
+	_base_scale = _rest_scale * _size_multiplier
+	scale = _base_scale
+
+
+func size_multiplier() -> float:
+	return _size_multiplier
 
 
 func _process(delta: float) -> void:

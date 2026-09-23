@@ -32,6 +32,7 @@ const ABILITY_BAR_SCREEN_MARGIN: float = 8.0
 const ABILITY_ROW_SEPARATION: int = 6
 const MIN_ABILITY_ROW_SEPARATION: int = 2
 const INK_ROW_SEPARATION: int = 4
+const FLASK_BAR_GAP: float = 6.0
 const INK_FONT_SIZE: int = 10
 const INK_TEXT_COLOR: Color = Color(0.2, 0.2, 0.2, 1.0)
 
@@ -55,6 +56,9 @@ var _wave_banner: WaveBanner = null
 var _boss_total: float = 0.0
 var _boss_empty_checks: int = 0
 var _ink_label: Label = null
+var _palette_row: HBoxContainer = null
+var _palette_label: Label = null
+var _flask_bar: FlaskBar = null
 var _dash_icon_large: ImageTexture = null
 var _dash_icon_small: ImageTexture = null
 var _slots: Array[AbilitySlot] = []
@@ -66,6 +70,7 @@ var _alive_enemies: int = 0
 
 
 func _ready() -> void:
+	add_to_group("hud")
 	LocalizationManager.language_changed.connect(_apply_translations)
 	_count_timer = Timer.new()
 	_count_timer.wait_time = 0.2
@@ -124,6 +129,8 @@ func setup_player(player: Player) -> void:
 	_build_screen_edges()
 	_build_stats_panel()
 	_build_ink_row()
+	_build_palette_row()
+	_build_flask_bar()
 	if _dash_slot != null:
 		return
 	_dash_icon_large = _build_dash_icon(DASH_ICON_SCALE)
@@ -193,6 +200,11 @@ func _refresh_boss_bar() -> void:
 	_boss_bar.update_value(remaining)
 
 
+func set_flask_glow(color: Color) -> void:
+	if _screen_edges != null:
+		_screen_edges.set_flask_glow(color)
+
+
 func screen_edges() -> ScreenEdges:
 	return _screen_edges
 
@@ -233,6 +245,63 @@ func _build_ink_row() -> void:
 	if not _player.ink_changed.is_connected(update_ink):
 		_player.ink_changed.connect(update_ink)
 	update_ink(_player.ink)
+
+
+func _build_palette_row() -> void:
+	if _palette_row == null:
+		_palette_row = HBoxContainer.new()
+		_palette_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_palette_row.add_theme_constant_override("separation", INK_ROW_SEPARATION)
+		_palette_label = Label.new()
+		_palette_label.add_theme_font_size_override("font_size", INK_FONT_SIZE)
+		_palette_label.add_theme_color_override("font_color", INK_TEXT_COLOR)
+		_palette_row.add_child(_palette_label)
+		var icon: TextureRect = TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.texture = PaletteCoin.build_texture(1)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		_palette_row.add_child(icon)
+		info_container.add_child(_palette_row)
+	if not GameManager.settings_changed.is_connected(update_palettes):
+		GameManager.settings_changed.connect(update_palettes)
+	update_palettes()
+
+
+func update_palettes() -> void:
+	if _palette_row == null:
+		return
+	_palette_label.text = str(GameManager.palettes)
+	_palette_row.visible = GameManager.palettes > 0
+
+
+func palette_row_visible() -> bool:
+	return _palette_row != null and _palette_row.visible
+
+
+func flask_bar() -> FlaskBar:
+	return _flask_bar
+
+
+func _build_flask_bar() -> void:
+	if _flask_bar != null:
+		_flask_bar.setup(_player.flask_belt)
+		return
+	var info_panel: Control = get_node("InfoPanel")
+	_flask_bar = FlaskBar.new()
+	_flask_bar.anchor_left = info_panel.anchor_left
+	_flask_bar.offset_left = info_panel.offset_left
+	add_child(_flask_bar)
+	move_child(_flask_bar, enemy_indicators.get_index())
+	_flask_bar.setup(_player.flask_belt)
+	info_panel.resized.connect(_place_flask_bar.bind(info_panel))
+	_place_flask_bar(info_panel)
+
+
+func _place_flask_bar(info_panel: Control) -> void:
+	if _flask_bar == null:
+		return
+	_flask_bar.offset_top = info_panel.offset_top + info_panel.size.y + FLASK_BAR_GAP
 
 
 func _build_dash_icon(icon_scale: int) -> ImageTexture:

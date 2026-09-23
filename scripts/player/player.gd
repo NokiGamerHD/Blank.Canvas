@@ -27,6 +27,19 @@ const PAINT_PUFF_RISE: float = 10.0
 const PAINT_PUFF_TIME: float = 0.32
 const PAINT_PUFF_SPREAD: float = 9.0
 const PAINT_PUFF_WHITE_MIX: float = 0.68
+const STAIN_PATTERNS: Array[String] = [
+	".###.|#####|#####|.###.|..#..",
+	".##..|####.|.####|..##.|.....",
+	"..##.|.####|#####|####.|.#...",
+	".#...|###..|####.|.###.|..#..",
+]
+const STAIN_INTERVAL: float = 0.15
+const MAX_STAINS: int = 13
+const STAIN_FADE: float = 0.45
+const STAIN_SPREAD: float = 12.0
+const STAIN_ALPHA: float = 0.92
+const PAINT_TINT_MIX: float = 0.22
+const PAINT_TINT_SPEED: float = 5.0
 
 @export var max_speed: float = 320.0
 
@@ -66,14 +79,19 @@ var _ghost_countdown: float = 0.0
 var _aim_override_enabled: bool = false
 var _aim_override: Vector2 = Vector2.ZERO
 
+var flask_belt: FlaskBelt = null
+
 var _paint_canvas: PaintCanvas = null
 var _footing: PaintCanvas.Footing = PaintCanvas.Footing.CLEAN
 var _footing_speed: float = 1.0
 var _footing_color: Color = Color(0, 0, 0, 0)
 var _puff_timer: float = 0.0
 var _shake_strength: float = 0.0
+var _stain_timer: float = 0.0
+var _stains: Array[Sprite2D] = []
 
 static var _puff_textures: Dictionary = {}
+static var _stain_textures: Dictionary = {}
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var camera: Camera2D = $Camera2D
@@ -84,6 +102,8 @@ func _ready() -> void:
 	add_to_group("player")
 	current_hp = max_hp
 	_apply_character_texture()
+	flask_belt = FlaskBelt.new()
+	add_child(flask_belt)
 
 
 func shake(strength: float) -> void:
@@ -117,9 +137,10 @@ func _physics_process(delta: float) -> void:
 	if _dash_timer > 0.0:
 		_process_dash(delta)
 	else:
+		var speed_scale: float = _footing_speed * flask_speed_multiplier()
 		if input_direction != Vector2.ZERO:
 			_input_velocity = _input_velocity.move_toward(
-				input_direction * max_speed * _footing_speed, acceleration * _footing_speed * delta)
+				input_direction * max_speed * speed_scale, acceleration * speed_scale * delta)
 		else:
 			_input_velocity = _input_velocity.move_toward(Vector2.ZERO, friction * delta)
 		_knockback = _knockback.move_toward(Vector2.ZERO, knockback_decay * delta)
@@ -148,11 +169,126 @@ func _update_footing(delta: float, moving: bool) -> void:
 		_:
 			_footing_speed = 1.0
 
+	_update_paint_tint(delta)
+	if _footing == PaintCanvas.Footing.CLEAN:
+		_clear_stains()
+	else:
+		_stain_timer -= delta
+		if _stain_timer <= 0.0:
+			_stain_timer = STAIN_INTERVAL
+			_add_stain(_footing_color)
+			AudioManager.play_paint_step()
+
 	_puff_timer -= delta
 	if _footing == PaintCanvas.Footing.CLEAN or not moving or _dash_timer > 0.0 or _puff_timer > 0.0:
 		return
 	_puff_timer = PAINT_PUFF_INTERVAL
 	_spawn_paint_puff(_paint_canvas.color_at(global_position))
+
+
+func flask_speed_multiplier() -> float:
+	return flask_belt.speed_multiplier() if flask_belt != null else 1.0
+
+
+func flask_dash_multiplier() -> float:
+	return flask_belt.dash_cooldown_multiplier() if flask_belt != null else 1.0
+
+
+func flask_dash_speed_multiplier() -> float:
+	return flask_belt.dash_speed_multiplier() if flask_belt != null else 1.0
+
+
+func set_body_scale(multiplier: float) -> void:
+	var animator: WalkAnimator = sprite as WalkAnimator
+	if animator == null:
+		return
+	animator.set_size_multiplier(multiplier)
+
+
+func body_scale() -> float:
+	var animator: WalkAnimator = sprite as WalkAnimator
+	return animator.size_multiplier() if animator != null else 1.0
+
+
+func clamp_health() -> void:
+	current_hp = minf(current_hp, max_hp)
+	health_changed.emit(current_hp, max_hp)
+
+
+func _update_paint_tint(delta: float) -> void:
+	var target: Color = Color.WHITE
+	if _footing != PaintCanvas.Footing.CLEAN and _footing_color.a > 0.0:
+		target = Color.WHITE.lerp(Color(_footing_color.r, _footing_color.g, _footing_color.b, 1.0),
+			PAINT_TINT_MIX)
+	sprite.self_modulate = sprite.self_modulate.lerp(target, minf(delta * PAINT_TINT_SPEED, 1.0))
+
+
+func paint_tint() -> Color:
+	return sprite.self_modulate
+
+
+func stain_count() -> int:
+	var count: int = 0
+	for stain in _stains:
+		if is_instance_valid(stain):
+			count += 1
+	return count
+
+
+func _add_stain(color: Color) -> void:
+	if color.a <= 0.0 or sprite == null:
+		return
+	while _stains.size() >= MAX_STAINS:
+		var oldest: Sprite2D = _stains.pop_front()
+		if is_instance_valid(oldest):
+			_fade_stain(oldest)
+
+	var stain: Sprite2D = Sprite2D.new()
+	stain.texture = _get_stain_texture(color, randi() % STAIN_PATTERNS.size())
+	stain.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	stain.modulate = Color(1.0, 1.0, 1.0, STAIN_ALPHA)
+	stain.position = Vector2(
+		roundf(randf_range(-STAIN_SPREAD, STAIN_SPREAD)),
+		roundf(randf_range(-STAIN_SPREAD, STAIN_SPREAD))
+	)
+	sprite.add_child(stain)
+	_stains.append(stain)
+
+
+func _clear_stains() -> void:
+	if _stains.is_empty():
+		return
+	for stain in _stains:
+		if is_instance_valid(stain):
+			_fade_stain(stain)
+	_stains.clear()
+
+
+func _fade_stain(stain: Sprite2D) -> void:
+	var tween: Tween = stain.create_tween()
+	tween.tween_property(stain, "modulate:a", 0.0, STAIN_FADE)
+	tween.tween_callback(stain.queue_free)
+
+
+static func _get_stain_texture(paint_color: Color, variant: int) -> ImageTexture:
+	var color: Color = Color(paint_color.r, paint_color.g, paint_color.b, 1.0)
+	var key: String = "%d|%d" % [color.to_rgba32(), variant]
+	if _stain_textures.has(key):
+		return _stain_textures[key]
+
+	var rows: PackedStringArray = STAIN_PATTERNS[variant].split("|")
+	var height: int = rows.size()
+	var width: int = rows[0].length()
+	var image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in height:
+		var row: String = rows[y]
+		for x in mini(width, row.length()):
+			if row[x] == "#":
+				image.set_pixel(x, y, color)
+	var texture: ImageTexture = ImageTexture.create_from_image(image)
+	_stain_textures[key] = texture
+	return texture
 
 
 func footing() -> PaintCanvas.Footing:
@@ -218,7 +354,7 @@ func try_dash(direction: Vector2) -> bool:
 
 	_dash_direction = dash_direction
 	_dash_timer = dash_duration
-	_dash_cooldown_timer = dash_cooldown
+	_dash_cooldown_timer = dash_cooldown * flask_dash_multiplier()
 	_invulnerable_timer = dash_duration + dash_invulnerability_grace
 	_ghost_countdown = 0.0
 	_knockback = Vector2.ZERO
@@ -230,7 +366,7 @@ func try_dash(direction: Vector2) -> bool:
 
 
 func _process_dash(delta: float) -> void:
-	velocity = _dash_direction * dash_speed
+	velocity = _dash_direction * dash_speed * flask_dash_speed_multiplier()
 	_spawn_dash_ghost(delta)
 	_dash_timer -= delta
 	if _dash_timer > 0.0:
