@@ -478,20 +478,6 @@ func heal(amount: float) -> void:
 	health_changed.emit(current_hp, max_hp)
 
 
-func heal_to_full() -> void:
-	if _is_dead:
-		return
-	current_hp = max_hp
-	health_changed.emit(current_hp, max_hp)
-
-
-func heal_fraction(fraction: float) -> void:
-	if _is_dead:
-		return
-	current_hp = minf(current_hp + max_hp * fraction, max_hp)
-	health_changed.emit(current_hp, max_hp)
-
-
 func add_ink(amount: int) -> void:
 	if amount <= 0:
 		return

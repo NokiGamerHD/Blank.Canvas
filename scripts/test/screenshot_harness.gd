@@ -60,6 +60,7 @@ const FLASK_DEMO_COIN_DISTANCE: float = 200.0
 const FLASK_DEMO_SETTLE: float = 0.45
 const FLASK_DEMO_SHOT_GAP: float = 0.12
 const FLASK_DEMO_GLOW: float = 0.3
+const FLASK_DEMO_SLOTS: int = 6
 
 
 func _ready() -> void:
@@ -213,6 +214,10 @@ func _capture_arena() -> void:
 	arena.player.spend_ink(arena.player.ink - SHOP_DEMO_SHORT_INK)
 	arena.get_node("ProgressionScreen").open(5, controller.get_abilities(), arena.player)
 	await _capture("29_loja_sem_gotas")
+	arena.get_node("ProgressionScreen").close()
+	arena.player.add_ink(SHOP_DEMO_INK)
+	arena.get_node("ProgressionScreen").open(4, controller.get_abilities(), arena.player, true)
+	await _capture("41_upgrade_de_status")
 	arena.get_node("ProgressionScreen").close()
 
 	await _capture_ink_drops_demo(arena)
@@ -532,7 +537,7 @@ func _capture_flask_demo(arena: Arena) -> void:
 		child.queue_free()
 	var saved_slots: int = GameManager.flask_slots
 	var saved_palettes: int = GameManager.palettes
-	GameManager.flask_slots = 3
+	GameManager.flask_slots = FLASK_DEMO_SLOTS
 	GameManager.palettes = 2
 	arena.hud.flask_bar().refresh()
 	arena.hud.update_palettes()
@@ -553,6 +558,9 @@ func _capture_flask_demo(arena: Arena) -> void:
 
 	arena.player.flask_belt.store(Color("0b35dc"), [FlaskEffects.RUSH])
 	arena.player.flask_belt.store(Color("e0b400"), [FlaskEffects.ORBIT])
+	arena.player.flask_belt.store(Color("15b10f"), [FlaskEffects.BURST])
+	arena.player.flask_belt.store(Color("b43434"), [FlaskEffects.ZIGZAG])
+	arena.player.flask_belt.store(Color("5a08ac"), [FlaskEffects.ZIGZAG, FlaskEffects.RUSH])
 	await get_tree().create_timer(FLASK_DEMO_SETTLE).timeout
 	await _capture("39_frascos_e_paleta")
 

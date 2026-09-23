@@ -386,26 +386,39 @@ func _check_use_heal() -> void:
 
 func _check_palette_coin() -> void:
 	await _clear()
+	_player.global_position = PLAYER_SPOT
+	_player.velocity = Vector2.ZERO
+	await get_tree().physics_frame
 	GameManager.palettes = 0
 	var waves: WaveManager = _arena.wave_manager
 	waves.current_wave = 9
 	waves._drop_palette_coin()
 	var on_common_wave: int = get_tree().get_nodes_in_group(PaletteCoin.GROUP).size()
 	waves.current_wave = 10
-	waves._last_boss_spot = PLAYER_SPOT + Vector2(260.0, 0.0)
+	waves._last_boss_spot = PLAYER_SPOT + Vector2(320.0, 0.0)
 	waves._drop_palette_coin()
-	await get_tree().process_frame
+	await _wait(0.6)
 	var coins: Array = get_tree().get_nodes_in_group(PaletteCoin.GROUP)
-	var big: bool = false
-	if not coins.is_empty():
-		var coin: PaletteCoin = coins[0] as PaletteCoin
-		big = coin._sprite.texture.get_width() >= 30 and coin._sprite.texture.get_width() <= 48
-		coin.collect()
+	var coin: PaletteCoin = coins[0] as PaletteCoin if not coins.is_empty() else null
+	var stayed: bool = coin != null and GameManager.palettes == 0
+	var size_ok: bool = coin != null and coin._sprite.texture.get_width() >= 30 \
+		and coin._sprite.texture.get_width() <= 48
+	var heights: Array[float] = []
+	for step in 40:
+		await get_tree().process_frame
+		if coin != null and is_instance_valid(coin):
+			heights.append(coin._sprite.position.y)
+	var floats: bool = heights.min() < heights.max()
+
+	if coin != null:
+		coin.global_position = _player.global_position
+	await _wait(0.2)
+	var taken: bool = GameManager.palettes == 1
 	waves.current_wave = 1
-	_report("a wave de chefe solta uma paleta, e wave comum nao solta",
-		on_common_wave == 0 and coins.size() == 1 and big and GameManager.palettes == 1,
-		"wave_comum=%d wave_de_chefe=%d tamanho_ok=%s paletas=%d" % [
-			on_common_wave, coins.size(), big, GameManager.palettes])
+	_report("a paleta fica levitando no chao e so entra ao encostar nela",
+		on_common_wave == 0 and coins.size() == 1 and stayed and size_ok and floats and taken,
+		"wave_comum=%d soltou=%d ficou_no_chao=%s tamanho_ok=%s levitou=%s pegou_ao_encostar=%s" % [
+			on_common_wave, coins.size(), stayed, size_ok, floats, taken])
 
 
 func _check_shop() -> void:
@@ -433,11 +446,24 @@ func _check_hud() -> void:
 	await get_tree().process_frame
 	var info_panel: Control = hud.get_node("InfoPanel")
 	var below: bool = bar.offset_top >= info_panel.offset_top + info_panel.size.y
-	_report("a barra de frascos fica embaixo do painel de wave e hp, com um espaco por slot",
-		bar != null and bar.capacity() == 3 and bar.slot_count() == 1 and below and hud.palette_row_visible(),
-		"slots=%d cheios=%d topo=%.0f painel_fim=%.0f paletas_visiveis=%s" % [
+	var one_row: bool = bar.row_count() == 1
+
+	GameManager.flask_slots = FlaskEffects.MAX_SLOTS
+	bar.refresh()
+	await get_tree().process_frame
+	var wrapped: bool = bar.row_count() == 2 and bar.slots_in_row(0) == FlaskBar.SLOTS_PER_ROW \
+		and bar.slots_in_row(1) == FlaskBar.SLOTS_PER_ROW
+	GameManager.flask_slots = 3
+	bar.refresh()
+	await get_tree().process_frame
+	var back_to_one: bool = bar.row_count() == 1
+
+	_report("a barra fica embaixo do painel e quebra em duas fileiras de 4 quando enche",
+		bar.capacity() == 3 and bar.slot_count() == 1 and below and one_row and wrapped
+			and back_to_one and hud.palette_row_visible(),
+		"slots=%d cheios=%d topo=%.0f painel_fim=%.0f fileiras_com_8=%s voltou_a_1=%s" % [
 			bar.capacity(), bar.slot_count(), bar.offset_top,
-			info_panel.offset_top + info_panel.size.y, hud.palette_row_visible()])
+			info_panel.offset_top + info_panel.size.y, wrapped, back_to_one])
 
 
 func _check_paint_stains() -> void:

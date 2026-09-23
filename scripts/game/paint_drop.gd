@@ -19,6 +19,7 @@ const ICON_INK_COLOR: Color = Color(0.2, 0.2, 0.22, 1.0)
 const HIGHLIGHT_MIX: float = 0.65
 const PIXEL_SCALE: int = 2
 const VALUE: int = 1
+const HEAL: float = 1.0
 const MAGNET_RADIUS: float = 90.0
 const COLLECT_DISTANCE: float = 12.0
 const FLY_START_SPEED: float = 140.0
@@ -106,6 +107,7 @@ func collect() -> void:
 	var player: Player = _get_player()
 	if player != null:
 		player.add_ink(value)
+		player.heal(HEAL * float(value))
 	AudioManager.play_ink_pickup()
 	queue_free()
 

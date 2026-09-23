@@ -38,6 +38,8 @@ func _ready() -> void:
 	await _check_progression_collects()
 	await _check_reroll()
 	await _check_new_ability_purchase()
+	await _check_progression_cadence()
+	await _check_drop_heals()
 	_check_texts_fit()
 
 	get_tree().paused = false
@@ -178,7 +180,7 @@ func _check_progression_collects() -> void:
 	_drop_at(Vector2(600.0, 0.0))
 	_drop_at(Vector2(-600.0, 0.0))
 	await get_tree().process_frame
-	_arena._on_progression_due(5)
+	_arena._on_progression_due(5, false)
 	await get_tree().process_frame
 	var waits_for_drops: bool = not _screen.visible and _player.ink == 0
 	var flying: bool = true
@@ -196,7 +198,7 @@ func _check_progression_collects() -> void:
 	_clear()
 	_drop_at(Vector2(600.0, 0.0))
 	await get_tree().process_frame
-	_arena._on_progression_due(5)
+	_arena._on_progression_due(5, false)
 	get_tree().paused = true
 	await get_tree().create_timer(_arena.DROP_GATHER_TIMEOUT + 1.0).timeout
 	var stayed_closed: bool = not _screen.visible
@@ -264,20 +266,20 @@ func _check_new_ability_purchase() -> void:
 	_screen.new_ability_chosen.connect(counter)
 
 	_player.add_ink(5)
-	_arena._on_progression_due(5)
+	_arena._on_progression_due(5, false)
 	var price: int = _screen.new_ability_price()
-	var locked: bool = _screen.new_ability_button.disabled and price == 20 \
-		and _screen.new_ability_info_label.text == LocalizationManager.text("progression.need_ink", [15])
+	var locked: bool = _screen.new_ability_button.disabled and price == 35 \
+		and _screen.new_ability_info_label.text == LocalizationManager.text("progression.need_ink", [30])
 	_screen.new_ability_button.pressed.emit()
 	var ignored: bool = emitted.is_empty() and not _arena.in_run_creator_layer.visible
 
-	_player.add_ink(20)
+	_player.add_ink(35)
 	_screen.return_to_shop()
 	var unlocked: bool = not _screen.new_ability_button.disabled
 	_screen.new_ability_button.pressed.emit()
 	var opened: bool = emitted.size() == 1 and _arena.in_run_creator_layer.visible
 	_arena._on_in_run_ability_cancelled()
-	var cancel_free: bool = _player.ink == 25 and _screen.visible and not _arena.in_run_creator_layer.visible
+	var cancel_free: bool = _player.ink == 40 and _screen.visible and not _arena.in_run_creator_layer.visible
 
 	var index: int = _arena._next_free_ability_index()
 	GameManager.set_ability_drawing(index, image)
@@ -288,13 +290,13 @@ func _check_new_ability_purchase() -> void:
 	var added: bool = _controller.get_abilities().size() == 2
 	var back_in_shop: bool = _screen.visible and _screen.choice_page.visible and get_tree().paused \
 		and not _screen.upgrade_button.disabled
-	var next_price: bool = _screen.new_ability_price() == 35 and _screen.new_ability_button.disabled
+	var next_price: bool = _screen.new_ability_price() == 60 and _screen.new_ability_button.disabled
 	_screen.new_ability_chosen.disconnect(counter)
 	_screen.close()
 
 	_report("nova habilidade custa gotas, so cobra ao criar e volta para escolher o upgrade",
 		locked and ignored and unlocked and opened and cancel_free and paid and added and back_in_shop and next_price,
-		"travada_com_5=%s ignorou_clique=%s liberou_com_25=%s abriu_editor=%s cancelar_nao_cobra=%s pagou=%s adicionou=%s voltou_a_loja=%s proximo_preco_35=%s" % [
+		"travada_com_5=%s ignorou_clique=%s liberou_com_40=%s abriu_editor=%s cancelar_nao_cobra=%s pagou=%s adicionou=%s voltou_a_loja=%s proximo_preco_60=%s" % [
 			locked, ignored, unlocked, opened, cancel_free, paid, added, back_in_shop, next_price
 		])
 
@@ -313,6 +315,58 @@ func _row_width(row: HBoxContainer, name: String, price: String) -> float:
 func _label_width(label: Label, text: String) -> float:
 	var font: Font = label.get_theme_font("font")
 	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
+
+
+func _check_progression_cadence() -> void:
+	_clear()
+	var waves: WaveManager = _arena.wave_manager
+	var kinds: Array[String] = []
+	var expected: Array[String] = ["-", "S", "-", "S", "F", "S", "-", "S", "-", "F"]
+	for wave in range(1, 11):
+		match waves.progression_for_wave(wave):
+			WaveManager.Progression.FULL:
+				kinds.append("F")
+			WaveManager.Progression.STATS:
+				kinds.append("S")
+			_:
+				kinds.append("-")
+
+	_screen.open(4, _controller.get_abilities(), _player, true)
+	var straight_to_upgrades: bool = _screen.upgrade_page.visible and not _screen.choice_page.visible
+	var no_back: bool = not _screen.back_to_choice_button.visible
+	var golden: int = 0
+	for button in _live_options():
+		if str(button.get_meta("upgrade_id", "")).begins_with(_screen.PERK_PREFIX):
+			golden += 1
+	var options: int = _live_options().size()
+	_screen.close()
+
+	_screen.open(5, _controller.get_abilities(), _player, false)
+	var full_has_choice: bool = _screen.choice_page.visible and not _screen.is_stats_only()
+	_screen.close()
+
+	_report("wave par abre so upgrade de status, e a de 5 em 5 abre a loja inteira",
+		kinds == expected and straight_to_upgrades and no_back and golden == 0 and options == 3
+			and full_has_choice,
+		"waves 1..10=%s direto_nos_upgrades=%s sem_voltar=%s dourados=%d opcoes=%d loja_inteira=%s" % [
+			"".join(kinds), straight_to_upgrades, no_back, golden, options, full_has_choice])
+
+
+func _check_drop_heals() -> void:
+	_clear()
+	_player.max_hp = 100.0
+	_player.current_hp = 40.0
+	var drop: PaintDrop = _drop_at(Vector2(10.0, 0.0))
+	await _wait(0.6)
+	var healed: float = _player.current_hp
+	_player.current_hp = 40.0
+	_arena._on_wave_completed(3)
+	await get_tree().process_frame
+	var after_wave: float = _player.current_hp
+	_report("cada gota cura 1 de vida, e passar de wave nao cura mais nada",
+		is_equal_approx(healed, 40.0 + PaintDrop.HEAL) and is_equal_approx(after_wave, 40.0)
+			and not is_instance_valid(drop),
+		"gota=%.0f->%.0f fim_de_wave=%.0f" % [40.0, healed, after_wave])
 
 
 func _check_texts_fit() -> void:

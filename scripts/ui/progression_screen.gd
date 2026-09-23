@@ -39,8 +39,8 @@ const PERK_INFO_FONT_SIZE: int = 8
 
 const REROLL_BASE_PRICE: int = 3
 const REROLL_PRICE_STEP: int = 2
-const NEW_ABILITY_BASE_PRICE: int = 20
-const NEW_ABILITY_PRICE_STEP: int = 15
+const NEW_ABILITY_BASE_PRICE: int = 35
+const NEW_ABILITY_PRICE_STEP: int = 25
 const SHOP_TEXT_COLOR: Color = Color(0.12, 0.12, 0.12, 1.0)
 const SHOP_PRICE_GAP: float = 8.0
 const SHOP_ICON_GAP: int = 3
@@ -67,6 +67,7 @@ var _player: Player = null
 var _controller: AbilityController = null
 var _current_wave: int = 5
 var _rerolls: int = 0
+var _stats_only: bool = false
 var _options_built: bool = false
 var _ink_label: Label = null
 var _new_ability_content: HBoxContainer = null
@@ -92,18 +93,27 @@ func _ready() -> void:
 	_apply_translations()
 
 
-func open(wave: int, abilities: Array[AbilityData], player: Player = null) -> void:
+func open(wave: int, abilities: Array[AbilityData], player: Player = null,
+		stats_only: bool = false) -> void:
 	_abilities = abilities
 	_player = player
 	_controller = player.get_node_or_null("AbilityController") as AbilityController if player != null else null
 	_current_wave = wave
 	_rerolls = 0
 	_options_built = false
+	_stats_only = stats_only
 	title_label.text = LocalizationManager.text("progression.wave_complete", [_current_wave])
-	_show_choice_page()
+	if _stats_only:
+		_on_upgrade_button_pressed()
+	else:
+		_show_choice_page()
 	_refresh_shop()
 	visible = true
 	get_tree().paused = true
+
+
+func is_stats_only() -> bool:
+	return _stats_only
 
 
 func close() -> void:
@@ -155,6 +165,8 @@ func reroll() -> bool:
 
 
 func _show_choice_page() -> void:
+	if _stats_only:
+		return
 	choice_page.visible = true
 	upgrade_page.visible = false
 
@@ -263,6 +275,7 @@ func _on_upgrade_button_pressed() -> void:
 		_build_upgrade_options()
 	choice_page.visible = false
 	upgrade_page.visible = true
+	back_to_choice_button.visible = not _stats_only
 	_refresh_shop()
 
 
@@ -276,7 +289,9 @@ func _build_upgrade_options() -> void:
 			continue
 		rest.append(entry)
 
-	var perk_pool: Array[Dictionary] = _available_perk_entries()
+	var perk_pool: Array[Dictionary] = []
+	if not _stats_only:
+		perk_pool = _available_perk_entries()
 	perk_pool.shuffle()
 	var chosen: Array[Dictionary] = []
 	if not perk_pool.is_empty():

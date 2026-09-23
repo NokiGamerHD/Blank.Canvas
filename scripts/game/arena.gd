@@ -7,8 +7,6 @@ extends Node2D
 
 @export var camera_margin: float = 160.0
 
-@export var per_wave_heal_fraction: float = 0.20
-
 @export var outside_color: Color = Color(0.82, 0.82, 0.8, 1)
 
 const CROSSHAIR_PATTERN: Array[String] = [
@@ -140,34 +138,26 @@ func _on_settings_requested() -> void:
 
 
 func _on_wave_completed(_wave: int) -> void:
-	player.heal_fraction(per_wave_heal_fraction)
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).attract()
 	for orb in get_tree().get_nodes_in_group(BossOrb.GROUP):
 		(orb as BossOrb).dissolve()
 	for flask in get_tree().get_nodes_in_group(PaintFlask.GROUP):
 		(flask as PaintFlask).attract()
-	for coin in get_tree().get_nodes_in_group(PaletteCoin.GROUP):
-		(coin as PaletteCoin).attract()
 
 
-func _on_progression_due(wave: int) -> void:
-	player.heal_to_full()
+func _on_progression_due(wave: int, stats_only: bool) -> void:
 	await _gather_drops()
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).collect()
-	for coin in get_tree().get_nodes_in_group(PaletteCoin.GROUP):
-		(coin as PaletteCoin).collect()
 	while get_tree().paused:
 		await get_tree().process_frame
-	progression_screen.open(wave, ability_controller.get_abilities(), player)
+	progression_screen.open(wave, ability_controller.get_abilities(), player, stats_only)
 
 
 func _gather_drops() -> void:
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).attract()
-	for coin in get_tree().get_nodes_in_group(PaletteCoin.GROUP):
-		(coin as PaletteCoin).attract()
 	var waited: float = 0.0
 	while waited < DROP_GATHER_TIMEOUT and _drops_on_the_way() > 0:
 		await get_tree().process_frame
