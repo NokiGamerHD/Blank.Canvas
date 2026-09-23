@@ -1,19 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=5 format=3 uid="uid://bk1yccspen2ej"]
 
 [ext_resource type="Script" path="res://scripts/ui/ability_creator.gd" id="1_abcreator"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pixel_editor.tscn" id="2_pixed"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_code_normal"]
-content_margin_left = 6.0
-content_margin_top = 4.0
-content_margin_right = 6.0
-content_margin_bottom = 4.0
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0, 0, 0, 0.35)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_code_focus"]
 content_margin_left = 6.0
@@ -26,6 +14,18 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.12, 0.12, 0.12, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_code_normal"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0.35)
 
 [node name="AbilityCreator" type="Control"]
 layout_mode = 3
@@ -84,7 +84,6 @@ theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
 text = "TOOL: PENCIL"
 autowrap_mode = 2
-vertical_alignment = 0
 
 [node name="ToolGrid" type="GridContainer" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
 layout_mode = 2
@@ -107,7 +106,6 @@ theme_override_constants/separation = 6
 [node name="PaletteLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel/PaletteHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
 text = "COLORS"
@@ -138,7 +136,6 @@ theme_override_constants/separation = 6
 
 [node name="BrushLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel/BrushRow"]
 layout_mode = 2
-size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
 text = "BRUSH: 1"
@@ -150,7 +147,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 min_value = 1.0
 max_value = 4.0
-step = 1.0
 value = 1.0
 tick_count = 4
 ticks_on_borders = true
@@ -208,7 +204,6 @@ theme_override_constants/separation = 6
 
 [node name="CodeLabel" type="Label" parent="CenterContainer/MainContainer/CodeRow"]
 layout_mode = 2
-size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 9
 text = "CODE"
@@ -218,17 +213,17 @@ custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+theme_override_colors/selection_color = Color(0.24, 0.42, 0.85, 0.8)
 theme_override_colors/caret_color = Color(0.12, 0.12, 0.12, 1)
-theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
 theme_override_colors/font_placeholder_color = Color(0.55, 0.55, 0.55, 1)
 theme_override_colors/font_selected_color = Color(1, 1, 1, 1)
-theme_override_colors/selection_color = Color(0.24, 0.42, 0.85, 0.8)
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
 theme_override_font_sizes/font_size = 8
-theme_override_styles/normal = SubResource("StyleBoxFlat_code_normal")
 theme_override_styles/focus = SubResource("StyleBoxFlat_code_focus")
+theme_override_styles/normal = SubResource("StyleBoxFlat_code_normal")
 placeholder_text = "PASTE A CODE"
-caret_blink = true
 select_all_on_focus = true
+caret_blink = true
 
 [node name="CopyCodeButton" type="Button" parent="CenterContainer/MainContainer/CodeRow"]
 custom_minimum_size = Vector2(0, 24)
@@ -256,6 +251,5 @@ custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.35, 0.2, 1)
 theme_override_font_sizes/font_size = 9
-text = ""
 horizontal_alignment = 1
 clip_text = true
