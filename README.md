@@ -30,8 +30,12 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   long-ranged
 - **Space** or **Shift** — dash, with a short moment of invulnerability that
   lets you pass through enemies
-- Every 5 waves, choose to **upgrade an ability** or **draw a new ability**;
-  a new ability keeps the shot type of your first one
+- **1** to **8** — use the paint flask in that slot
+- **Tab** — hold to open the full arena map
+- Every 2 waves, pick one of three **attack upgrades**; every 5 waves the whole
+  shop opens, with character upgrades, a special perk, and the choice between
+  upgrading an ability and **drawing a new one**, which keeps the shot type of
+  your first ability
 - Survive as many waves as you can
 
 ## Main features
@@ -49,8 +53,9 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 - Nine one-time special upgrades, three per shot type, each scaling with another
   stat (life steal, ricochet, crits, blast, shards, overcharge, venom, focus and
   momentum)
-- A stats panel under the minimap with life, attack, fire rate and the other
-  numbers each upgrade changes
+- A stats panel under the minimap with life, attack, fire rate, pierce, size,
+  speed, range, dash cooldown, move speed and pickup range, plus every special
+  perk taken so far
 - Endless waves with increasing difficulty and enemy variety
 - A boss every 10 waves, alone in its own wave: a giant square with a pulsing
   aura that takes a beating before it splits, into pieces that each take fewer
@@ -62,11 +67,27 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   bubbling with foam in its own color, crackling with lightning when it fuses
   twice; two different colors fuse into the stronger enemy painted in the mixed
   color, and faster
-- Enemies drop paint drops in their own ink color, collected by walking close
-- Progression every 5 waves: random upgrades, rerolls paid in paint drops and
-  new abilities bought with them
-- A settings screen, from the menu and from the pause screen: volume, mute,
-  fullscreen, screen shake, damage numbers, language and rebindable controls
+- Enemies drop paint drops in their own ink color, collected by walking close;
+  each one heals a point of life, so ink is worth chasing mid-fight
+- Enemies also drop paint flasks in their color, kept in the belt under the HP
+  panel: the red one adds damage and makes shots zigzag, the blue one speeds up
+  shots, the player and the reload, the green one grows both the shot and the
+  character, and the yellow one turns shots into seekers and refreshes the dash
+- Walking over fresh paint stains the character in that color and leaves little
+  puffs behind
+- Bosses drop a golden palette that stays on the floor until it is picked up; it
+  buys a flask slot in the character editor, up to eight, and carries over
+  between runs
+- Progression in two rhythms: attack upgrades in blue every 2 waves, and every 5
+  waves the full shop with character upgrades in pink, a golden perk, rerolls
+  paid in paint drops and new abilities bought with them
+- A settings screen, from the menu and from the pause screen: sound volume,
+  music volume, mute, fullscreen, screen shake, damage numbers, language,
+  rebindable controls and a two-step button to erase the save data
+- A hold-to-open map over the arena, which fades while the player moves
+- Separate music tracks for the menu, the arena and boss waves, crossfading into
+  each other, with their own volume slider
+- A credits screen from the main menu
 - Wave announcements on screen, with a different banner, colour and sound when a
   boss wave starts
 - English/Portuguese localization, switchable from the settings screen
@@ -99,6 +120,11 @@ The MIT License does **not** extend to every bundled asset:
   No license to them is granted here, and their terms of use and
   redistribution have not been verified. Anyone reusing or redistributing
   this project is responsible for clearing those sprites independently.
+
+- Any **music** placed in `assets/audio/music/` comes from third-party packs
+  and keeps its own license, which is listed in the game's credits screen. The
+  repository ships no music files; the game runs silently when the folder is
+  empty.
 
 All remaining assets — icon, cover art, background textures, and sound
 effects — are original to this project and are covered by the MIT License

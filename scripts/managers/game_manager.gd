@@ -5,7 +5,7 @@ signal settings_changed
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "3.5.0"
+const VERSION: String = "3.6.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -275,6 +275,36 @@ func reset_run_data() -> void:
 	last_canvas_snapshot = null
 	last_canvas_coverage = 0.0
 	last_run_was_record = false
+
+
+func reset_save() -> bool:
+	var cleared: bool = _clear_drawings_dir()
+	reset_run_data()
+	best_wave = 0
+	palettes = 0
+	flask_slots = FlaskEffects.START_SLOTS
+	custom_colors = PackedColorArray()
+	screen_shake = true
+	damage_numbers = true
+	_save_progress()
+	_save_custom_colors()
+	_save_preferences()
+	settings_changed.emit()
+	return cleared
+
+
+func _clear_drawings_dir() -> bool:
+	var dir: DirAccess = DirAccess.open(DRAWINGS_DIR)
+	if dir == null:
+		return true
+	var failed: int = 0
+	for file_name in dir.get_files():
+		if dir.remove(file_name) != OK:
+			failed += 1
+	if failed > 0:
+		push_warning("[GameManager] %d arquivo(s) de desenho não puderam ser apagados." % failed)
+		return false
+	return true
 
 
 func set_wave_reached(wave: int) -> void:

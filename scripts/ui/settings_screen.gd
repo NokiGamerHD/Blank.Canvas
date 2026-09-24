@@ -13,6 +13,7 @@ const LABEL_WIDTH: int = 180
 const VALUE_WIDTH: int = 150
 const DIM_COLOR: Color = Color(0.1, 0.1, 0.1, 0.55)
 const TEXT_COLOR: Color = Color(0.15, 0.15, 0.15, 1.0)
+const ERASE_COLOR: Color = Color(0.55, 0.11, 0.11, 1.0)
 
 const ACTION_KEYS: Dictionary = {
 	"move_up": "settings.action_move_up",
@@ -23,6 +24,8 @@ const ACTION_KEYS: Dictionary = {
 	"dash": "settings.action_dash",
 }
 
+var allow_erase: bool = true
+
 var _general_page: VBoxContainer = null
 var _controls_page: VBoxContainer = null
 var _general_tab: Button = null
@@ -30,6 +33,8 @@ var _controls_tab: Button = null
 var _title: Label = null
 var _volume_label: Label = null
 var _volume_slider: HSlider = null
+var _music_label: Label = null
+var _music_slider: HSlider = null
 var _mute_button: Button = null
 var _fullscreen_button: Button = null
 var _shake_button: Button = null
@@ -37,9 +42,12 @@ var _numbers_button: Button = null
 var _english_button: Button = null
 var _portuguese_button: Button = null
 var _reset_button: Button = null
+var _erase_button: Button = null
 var _back_button: Button = null
 var _action_buttons: Dictionary = {}
 var _awaiting_action: String = ""
+var _erase_armed: bool = false
+var _erased: bool = false
 
 
 func _ready() -> void:
@@ -56,6 +64,7 @@ func _ready() -> void:
 func open() -> void:
 	visible = true
 	_awaiting_action = ""
+	_disarm_erase()
 	_show_page(true)
 	_apply_translations()
 
@@ -152,6 +161,18 @@ func _build_general_page() -> void:
 	_volume_slider.drag_ended.connect(_on_volume_drag_ended)
 	volume_row.add_child(_volume_slider)
 
+	var music_row: HBoxContainer = _make_row(_general_page)
+	_music_label = _make_label()
+	music_row.add_child(_music_label)
+	_music_slider = HSlider.new()
+	_music_slider.min_value = 0.0
+	_music_slider.max_value = 1.0
+	_music_slider.step = 0.05
+	_music_slider.custom_minimum_size = Vector2(VALUE_WIDTH, ROW_HEIGHT)
+	_music_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_music_slider.value_changed.connect(_on_music_changed)
+	music_row.add_child(_music_slider)
+
 	_mute_button = _make_button(ROW_FONT_SIZE)
 	_mute_button.pressed.connect(_on_mute_pressed)
 	_general_page.add_child(_mute_button)
@@ -177,6 +198,11 @@ func _build_general_page() -> void:
 	_portuguese_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_portuguese_button.pressed.connect(_on_language_pressed.bind("pt_BR"))
 	language_row.add_child(_portuguese_button)
+
+	_erase_button = _make_button(ROW_FONT_SIZE)
+	_erase_button.add_theme_color_override("font_color", ERASE_COLOR)
+	_erase_button.pressed.connect(_on_erase_pressed)
+	_general_page.add_child(_erase_button)
 
 
 func _build_controls_page() -> void:
@@ -221,6 +247,7 @@ func _make_button(font_size: int) -> Button:
 
 
 func _show_page(general: bool) -> void:
+	_disarm_erase()
 	_general_page.visible = general
 	_controls_page.visible = not general
 	_general_tab.disabled = general
@@ -248,10 +275,14 @@ func _apply_translations() -> void:
 func _apply_values() -> void:
 	_volume_label.text = LocalizationManager.text("audio.volume", [int(round(AudioManager.volume * 100.0))])
 	_volume_slider.set_value_no_signal(AudioManager.volume)
+	_music_label.text = LocalizationManager.text("audio.music", [int(round(MusicManager.volume * 100.0))])
+	_music_slider.set_value_no_signal(MusicManager.volume)
 	_mute_button.text = LocalizationManager.text("audio.unmute" if AudioManager.muted else "audio.mute")
 	_fullscreen_button.text = _toggle_text("settings.fullscreen", GameManager.is_fullscreen())
 	_shake_button.text = _toggle_text("settings.screen_shake", GameManager.screen_shake)
 	_numbers_button.text = _toggle_text("settings.damage_numbers", GameManager.damage_numbers)
+	_erase_button.visible = allow_erase
+	_erase_button.text = _erase_text()
 	_english_button.disabled = LocalizationManager.is_language_selected("en")
 	_portuguese_button.disabled = LocalizationManager.is_language_selected("pt_BR")
 	for action in _action_buttons:
@@ -260,6 +291,30 @@ func _apply_values() -> void:
 			button.text = LocalizationManager.text("settings.press_key")
 			continue
 		button.text = GameManager.action_label(action)
+
+
+func _erase_text() -> String:
+	if _erase_armed:
+		return LocalizationManager.text("settings.erase_confirm")
+	if _erased:
+		return LocalizationManager.text("settings.erase_done")
+	return LocalizationManager.text("settings.erase_save")
+
+
+func _disarm_erase() -> void:
+	_erase_armed = false
+	_erased = false
+
+
+func _on_erase_pressed() -> void:
+	if not _erase_armed:
+		_erase_armed = true
+		_erased = false
+		_apply_values()
+		return
+	_erase_armed = false
+	_erased = GameManager.reset_save()
+	_apply_values()
 
 
 func _toggle_text(key: String, value: bool) -> String:
@@ -289,6 +344,11 @@ func _input(event: InputEvent) -> void:
 	if GameManager.rebind_action(_awaiting_action, event):
 		AudioManager.play_click()
 	_awaiting_action = ""
+	_apply_values()
+
+
+func _on_music_changed(value: float) -> void:
+	MusicManager.set_volume(value)
 	_apply_values()
 
 

@@ -18,6 +18,7 @@ func _ready() -> void:
 	save_scenario_button.pressed.connect(_on_save_scenario_button_pressed)
 	menu_button.pressed.connect(_on_menu_button_pressed)
 	LocalizationManager.language_changed.connect(_apply_translations)
+	MusicManager.play_menu()
 
 	retry_button.visible = GameManager.has_ability_drawing(0)
 	_apply_translations()

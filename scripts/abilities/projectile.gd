@@ -67,7 +67,9 @@ func configure(texture: Texture2D, fly_direction: Vector2) -> void:
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
-	var texture: Texture2D = get_meta("configured_texture", null)
+	var texture: Texture2D = null
+	if has_meta("configured_texture"):
+		texture = get_meta("configured_texture") as Texture2D
 	if texture == null:
 		texture = _resolve_ability_texture()
 	sprite.texture = texture

@@ -26,6 +26,12 @@ const DEATH_SPLAT_FACTOR: float = 2.4
 const DEATH_SPATTERS: int = 4
 const BOSS_SPLAT_FACTOR: float = 0.42
 const BOSS_SPLAT_SPATTERS: int = 5
+const QR_SOURCE_SIZE: int = 500
+const QR_CARD_BORDER: int = 8
+const QR_ENTRIES: Array[Dictionary] = [
+	{"file": "QR-Jogo.png", "label": "itch.io Link"},
+	{"file": "QR-Insta.png", "label": "Instagram Link"},
+]
 
 const INK_COLOR: Color = Color(0.15, 0.15, 0.15, 1.0)
 const CREDIT_COLOR: Color = Color(0.2, 0.2, 0.2, 1.0)
@@ -35,6 +41,7 @@ const SHADOW_COLOR: Color = Color(0.0, 0.0, 0.0, 0.3)
 const BRUSH_PAINT: Color = Color("e0b400")
 
 const CREDIT: String = "Developed by Imperial Bay™"
+const CARD_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 
 const ICON_DARK: Color = Color("2b2b2b")
 const ICON_LIGHT: Color = Color("fbfbf8")
@@ -171,10 +178,44 @@ const LAYOUTS: Array[Dictionary] = [
 			{"type": EnemyBase.EnemyType.TANK, "at": Vector2(0.09, 0.87), "heading": -2.2, "generation": 1},
 		],
 	},
+	{
+		"file": "poster-a4-%dx%d.png",
+		"size": Vector2i(1240, 1754),
+		"view": Vector2i(310, 439),
+		"title_lines": ["BLANK", "CANVAS"],
+		"title_scale": 16,
+		"icon_scale": 7,
+		"title_center_y": 300,
+		"line_gap": 40,
+		"slogan_lines": ["Canvas into", "your Blank!"],
+		"slogan_scale": 10,
+		"slogan_top": 616,
+		"slogan_gap": 28,
+		"credit_scale": 5,
+		"credit_center_y": 1690,
+		"selection": Vector2i(1, 0),
+		"brush": Vector2i(0, 4),
+		"pointer_scale": 7,
+		"selection_unit": 4,
+		"seed": 20260924,
+		"blast": Vector2(0.82, 0.26),
+		"qr": {"top": 960, "gap": 48, "pad": 24, "scale": 1, "label_scale": 4, "label_gap": 24},
+		"trails": [
+			{"type": EnemyBase.EnemyType.BOSS, "at": Vector2(0.17, 0.11), "heading": 2.4},
+			{"type": EnemyBase.EnemyType.BOSS, "at": Vector2(0.86, 0.08), "heading": 0.6, "generation": 1,
+				"aim": Vector2(0.68, 0.16)},
+			{"type": EnemyBase.EnemyType.FAST, "at": Vector2(0.1, 0.4), "heading": -0.6},
+			{"type": EnemyBase.EnemyType.COMMON, "at": Vector2(0.34, 0.53), "heading": -2.4},
+			{"type": EnemyBase.EnemyType.STALKER, "at": Vector2(0.74, 0.47), "heading": 1.0},
+			{"type": EnemyBase.EnemyType.TANK, "at": Vector2(0.55, 0.28), "heading": 0.8},
+			{"type": EnemyBase.EnemyType.TANK, "at": Vector2(0.93, 0.38), "heading": -2.1, "generation": 1},
+		],
+	},
 ]
 
 var _font: FontFile = null
 var _masks: Dictionary = {}
+var _qr_images: Dictionary = {}
 
 
 func _ready() -> void:
@@ -193,6 +234,11 @@ func _ready() -> void:
 		for line in layout["title_lines"] + layout["slogan_lines"]:
 			await _cache_mask(line)
 	await _cache_mask(CREDIT)
+	for entry in QR_ENTRIES:
+		await _cache_mask(entry["label"])
+	if not _load_qr_images():
+		get_tree().quit(1)
+		return
 
 	var failed: bool = false
 	for layout in LAYOUTS:
@@ -208,6 +254,22 @@ func _ready() -> void:
 			continue
 		print("banner: %s" % path)
 	get_tree().quit(1 if failed else 0)
+
+
+func _load_qr_images() -> bool:
+	for entry in QR_ENTRIES:
+		var path: String = ProjectSettings.globalize_path(OUTPUT_DIR.path_join(entry["file"]))
+		var image: Image = Image.load_from_file(path)
+		if image == null:
+			push_warning("[BannerMaker] Não foi possível ler o QR %s." % path)
+			return false
+		if image.get_width() != QR_SOURCE_SIZE or image.get_height() != QR_SOURCE_SIZE:
+			push_warning("[BannerMaker] %s tem %dx%d, e o layout espera %d de lado." % [
+				path, image.get_width(), image.get_height(), QR_SOURCE_SIZE])
+			return false
+		image.convert(Image.FORMAT_RGBA8)
+		_qr_images[entry["file"]] = image
+	return true
 
 
 func _cache_mask(text: String) -> void:
@@ -438,8 +500,9 @@ func _compose(layout: Dictionary, background: Image, icon: Image) -> Image:
 
 	var selection: Vector2i = layout["selection"]
 	var selection_cell: Vector2i = line_origins[selection.x] + Vector2i(selection.y * FONT_CELL * title_scale, 0)
-	var handle: Vector2i = _draw_selection(banner, selection_cell, title_scale)
-	var pointer_scale: int = POINTER_SCALE * OUTPUT_SCALE
+	var selection_unit: int = int(layout.get("selection_unit", UI_PIXEL)) * OUTPUT_SCALE
+	var handle: Vector2i = _draw_selection(banner, selection_cell, title_scale, selection_unit)
+	var pointer_scale: int = int(layout.get("pointer_scale", POINTER_SCALE)) * OUTPUT_SCALE
 	_stamp_pattern(banner, CURSOR_PATTERN, CURSOR_TONES, handle, pointer_scale, true)
 
 	var tip: Vector2i = brush_cell + Vector2i((FONT_CELL - 1) * title_scale, title_scale / 2)
@@ -458,7 +521,47 @@ func _compose(layout: Dictionary, background: Image, icon: Image) -> Image:
 	var credit_origin: Vector2i = Vector2i(_snap((size.x - _text_width(CREDIT, credit_scale)) / 2),
 		_snap(int(layout["credit_center_y"]) * OUTPUT_SCALE - credit_mask.get_height() * credit_scale / 2))
 	_stamp_text(banner, credit_mask, credit_origin, credit_scale, CREDIT_COLOR)
+	if layout.has("qr"):
+		_stamp_qr_block(banner, layout["qr"], size.x)
 	return banner
+
+
+func _stamp_qr_block(target: Image, setup: Dictionary, width: int) -> void:
+	var scale: int = int(setup["scale"]) * OUTPUT_SCALE
+	var pad: int = int(setup["pad"]) * OUTPUT_SCALE
+	var border: int = QR_CARD_BORDER * OUTPUT_SCALE
+	var gap: int = int(setup["gap"]) * OUTPUT_SCALE
+	var label_scale: int = int(setup["label_scale"]) * OUTPUT_SCALE
+	var label_gap: int = int(setup["label_gap"]) * OUTPUT_SCALE
+	var card: int = QR_SOURCE_SIZE * scale + pad * 2
+	var block: int = card * QR_ENTRIES.size() + gap * (QR_ENTRIES.size() - 1)
+	var left: int = _snap((width - block) / 2)
+	var top: int = _snap(int(setup["top"]) * OUTPUT_SCALE)
+
+	for index in QR_ENTRIES.size():
+		var entry: Dictionary = QR_ENTRIES[index]
+		var origin: Vector2i = Vector2i(left + index * (card + gap), top)
+		_blend_block(target, Rect2i(origin + Vector2i(border, border) * 2,
+			Vector2i(card, card)), SHADOW_COLOR)
+		target.fill_rect(Rect2i(origin - Vector2i(border, border),
+			Vector2i(card + border * 2, card + border * 2)), INK_COLOR)
+		target.fill_rect(Rect2i(origin, Vector2i(card, card)), CARD_COLOR)
+		_stamp_texture(target, _qr_images[entry["file"]], origin + Vector2i(pad, pad), scale)
+
+		var mask: Image = _masks[entry["label"]]
+		var label_origin: Vector2i = Vector2i(
+			_snap(origin.x + (card - _text_width(entry["label"], label_scale)) / 2),
+			_snap(origin.y + card + border + label_gap))
+		_stamp_text(target, mask, label_origin, label_scale, INK_COLOR)
+
+
+func _stamp_texture(target: Image, art: Image, origin: Vector2i, scale: int) -> void:
+	for y in art.get_height():
+		for x in art.get_width():
+			var pixel: Color = art.get_pixel(x, y)
+			if pixel.a <= 0.5:
+				continue
+			target.fill_rect(Rect2i(origin + Vector2i(x, y) * scale, Vector2i(scale, scale)), pixel)
 
 
 func _text_width(text: String, scale: int) -> int:
@@ -545,8 +648,7 @@ func _paint_letter(target: Image, mask: Image, index: int, cell: Vector2i, scale
 			break
 
 
-func _draw_selection(target: Image, cell: Vector2i, scale: int) -> Vector2i:
-	var unit: int = UI_PIXEL * OUTPUT_SCALE
+func _draw_selection(target: Image, cell: Vector2i, scale: int, unit: int) -> Vector2i:
 	var glyph: int = (FONT_CELL - 1) * scale
 	var pad: int = scale * 2 / 3
 	var box: Rect2i = Rect2i(cell - Vector2i(pad, pad), Vector2i(glyph + pad * 2, glyph + pad * 2))
@@ -568,11 +670,11 @@ func _draw_selection(target: Image, cell: Vector2i, scale: int) -> Vector2i:
 		box.end,
 	]
 	for corner in corners:
-		var top_left: Vector2i = _snap_vector(corner - Vector2i(handle_size, handle_size) / 2)
+		var top_left: Vector2i = _snap_grid(corner - Vector2i(handle_size, handle_size) / 2, unit)
 		target.fill_rect(Rect2i(top_left, Vector2i(handle_size, handle_size)), INK_COLOR)
 		target.fill_rect(Rect2i(top_left + Vector2i(unit, unit), Vector2i(unit, unit) * 2), Color.WHITE)
-	return _snap_vector(box.end - Vector2i(unit, unit))
+	return _snap_grid(box.end - Vector2i(unit, unit), unit)
 
 
-func _snap_vector(value: Vector2i) -> Vector2i:
-	return Vector2i(_snap(value.x), _snap(value.y))
+func _snap_grid(value: Vector2i, unit: int) -> Vector2i:
+	return Vector2i(value.x - posmod(value.x, unit), value.y - posmod(value.y, unit))
