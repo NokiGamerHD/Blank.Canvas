@@ -60,6 +60,7 @@ func _ready() -> void:
 	_setup_pause()
 	_apply_crosshair_cursor()
 	player.died.connect(_on_player_died_capture_canvas)
+	MusicManager.play_arena()
 
 
 func _exit_tree() -> void:
@@ -111,6 +112,7 @@ func _setup_hud() -> void:
 	wave_manager.wave_changed.connect(hud.update_wave)
 	wave_manager.wave_changed.connect(_on_wave_changed)
 	wave_manager.boss_spawned.connect(hud.track_boss)
+	wave_manager.boss_spawned.connect(_on_boss_spawned)
 	hud.setup_abilities(ability_controller)
 	hud.setup_player(player)
 	hud.setup_minimap(self)
@@ -126,6 +128,10 @@ func _setup_progression() -> void:
 	in_run_creator.in_run_cancelled.connect(_on_in_run_ability_cancelled)
 
 
+func _on_boss_spawned(_boss: EnemyBase) -> void:
+	MusicManager.play_boss()
+
+
 func _on_wave_changed(wave: int) -> void:
 	hud.announce_wave(wave, wave_manager.is_boss_wave(wave))
 
@@ -133,11 +139,14 @@ func _on_wave_changed(wave: int) -> void:
 func _on_settings_requested() -> void:
 	if _settings_screen == null:
 		_settings_screen = SettingsScreen.new()
+		_settings_screen.allow_erase = false
 		add_child(_settings_screen)
 	_settings_screen.open()
 
 
-func _on_wave_completed(_wave: int) -> void:
+func _on_wave_completed(wave: int) -> void:
+	if wave_manager.is_boss_wave(wave):
+		MusicManager.play_arena()
 	for drop in get_tree().get_nodes_in_group(PaintDrop.GROUP):
 		(drop as PaintDrop).attract()
 	for orb in get_tree().get_nodes_in_group(BossOrb.GROUP):

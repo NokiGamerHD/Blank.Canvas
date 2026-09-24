@@ -55,7 +55,7 @@ grow_vertical = 2
 
 [node name="MainContainer" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 
 [node name="TitleLabel" type="Label" parent="CenterContainer/MainContainer"]
 layout_mode = 2
@@ -75,10 +75,10 @@ size_flags_vertical = 4
 [node name="SidePanel" type="VBoxContainer" parent="CenterContainer/MainContainer/EditorRow"]
 custom_minimum_size = Vector2(232, 0)
 layout_mode = 2
-theme_override_constants/separation = 3
+theme_override_constants/separation = 2
 
 [node name="ToolLabel" type="Label" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
-custom_minimum_size = Vector2(0, 28)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.3, 0.3, 1)
 theme_override_font_sizes/font_size = 10
@@ -187,7 +187,7 @@ text = "OUTLINE: 0 / 100"
 horizontal_alignment = 1
 
 [node name="ConfirmButton" type="Button" parent="CenterContainer/MainContainer/EditorRow/SidePanel"]
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
 text = "CONFIRM"
@@ -247,7 +247,7 @@ theme_override_font_sizes/font_size = 9
 text = "LOAD"
 
 [node name="FeedbackLabel" type="Label" parent="CenterContainer/MainContainer"]
-custom_minimum_size = Vector2(0, 16)
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.35, 0.2, 1)
 theme_override_font_sizes/font_size = 9

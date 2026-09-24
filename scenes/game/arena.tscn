@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/game/arena.gd" id="1_arena"]
 [ext_resource type="Script" path="res://scripts/game/paint_canvas.gd" id="2_canvas"]
-[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" uid="uid://cytipxy0pvllt" path="res://scenes/player/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://scripts/game/wave_manager.gd" id="4_waves"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/progression_screen.tscn" id="6_prog"]

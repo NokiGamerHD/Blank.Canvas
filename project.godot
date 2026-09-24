@@ -26,6 +26,7 @@ GameManager="*res://scripts/managers/game_manager.gd"
 LocalizationManager="*res://scripts/managers/localization_manager.gd"
 TransitionManager="*res://scripts/managers/transition_manager.gd"
 AudioManager="*res://scripts/managers/audio_manager.gd"
+MusicManager="*res://scripts/managers/music_manager.gd"
 
 [display]
 

@@ -404,8 +404,10 @@ func _check_palette_coin() -> void:
 	var stayed: bool = coin != null and GameManager.palettes == 0 and not coin.is_flying()
 	var size_ok: bool = coin != null and coin._sprite.texture.get_width() <= 30
 	var heights: Array[float] = []
-	for step in 30:
+	var watched: float = 0.0
+	while watched < 1.6:
 		await get_tree().process_frame
+		watched += get_process_delta_time()
 		if coin != null and is_instance_valid(coin):
 			heights.append(coin._sprite.position.y)
 	var floats: bool = not heights.is_empty() and heights.min() < heights.max()

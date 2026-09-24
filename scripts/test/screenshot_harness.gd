@@ -154,6 +154,11 @@ func _capture_main_menu() -> void:
 	settings._show_page(true)
 	settings.close()
 
+	var credits: CreditsScreen = menu._credits_screen
+	credits.open()
+	await _capture("43_creditos")
+	credits.close()
+
 	await _clear_scene(menu)
 
 
