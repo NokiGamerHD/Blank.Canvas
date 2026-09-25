@@ -62,9 +62,16 @@ const FLASK_DEMO_SHOT_GAP: float = 0.12
 const FLASK_DEMO_GLOW: float = 0.3
 const FLASK_DEMO_SLOTS: int = 6
 
+var _saved_palettes: int = 0
+var _saved_best_wave: int = 0
+var _saved_slots: int = 0
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_saved_palettes = GameManager.palettes
+	_saved_best_wave = GameManager.best_wave
+	_saved_slots = GameManager.flask_slots
 	var language: String = OS.get_environment("SHOT_LANG")
 	if not language.is_empty():
 		LocalizationManager.set_language(language)
@@ -79,6 +86,10 @@ func _ready() -> void:
 	await _capture_creators()
 	await _capture_arena()
 	await _capture_game_over()
+	GameManager.palettes = _saved_palettes
+	GameManager.best_wave = _saved_best_wave
+	GameManager.flask_slots = _saved_slots
+	GameManager._save_progress()
 	get_tree().quit()
 
 
@@ -602,6 +613,8 @@ func _capture_flask_demo(arena: Arena) -> void:
 	arena.player.flask_belt._clear_effect()
 	arena.player.flask_belt.slots.clear()
 	arena.hud.flask_bar().refresh()
+	if is_instance_valid(coin):
+		coin.queue_free()
 	GameManager.flask_slots = saved_slots
 	GameManager.palettes = saved_palettes
 	arena.hud.update_palettes()

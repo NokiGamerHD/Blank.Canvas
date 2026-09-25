@@ -303,20 +303,17 @@ func _text_width(message: String, font_size: int) -> int:
 
 func _check_music() -> void:
 	AudioManager.set_muted(false)
-	var silent: bool = not MusicManager.play_menu() and not MusicManager.is_playing()
+	var installed: bool = MusicManager.has_track(MusicManager.MENU_TRACK) \
+		and MusicManager.has_track(MusicManager.ARENA_TRACK) \
+		and MusicManager.has_track(MusicManager.BOSS_TRACK)
+	var looping: bool = true
+	for track in MusicManager.track_names():
+		var stream: AudioStream = MusicManager._tracks[track]
+		looping = looping and stream is AudioStreamOggVorbis and (stream as AudioStreamOggVorbis).loop
+	var refused: bool = not MusicManager.play("faixa_que_nao_existe")
+	await get_tree().create_timer(MusicManager.FADE_TIME + 0.2).timeout
+	var missing: bool = refused and not MusicManager.is_playing()
 
-	var stream: AudioStreamWAV = AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_8_BITS
-	stream.mix_rate = 22050
-	var samples: PackedByteArray = PackedByteArray()
-	samples.resize(22050)
-	samples.fill(128)
-	stream.data = samples
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = samples.size()
-	MusicManager._tracks[MusicManager.ARENA_TRACK] = stream
-	MusicManager._tracks[MusicManager.BOSS_TRACK] = stream
 	MusicManager.set_volume(0.8)
 	var started: bool = MusicManager.play_arena()
 	await get_tree().create_timer(MusicManager.FADE_TIME + 0.2).timeout
@@ -330,8 +327,10 @@ func _check_music() -> void:
 	AudioManager.set_muted(true)
 	var muted_db: float = MusicManager._players[MusicManager._active].volume_db
 	AudioManager.set_muted(false)
+	await get_tree().create_timer(MusicManager.FADE_TIME + 0.2).timeout
+	var resumed: bool = MusicManager.is_playing() \
+		and MusicManager.current_track() == MusicManager.BOSS_TRACK
 	MusicManager.stop()
-	MusicManager._tracks.clear()
 
 	MusicManager.set_volume(0.35)
 	var settings: ConfigFile = ConfigFile.new()
@@ -343,11 +342,12 @@ func _check_music() -> void:
 		and is_equal_approx(_screen._music_slider.value, 0.35) \
 		and _screen._music_label.text.contains("35")
 
-	_report("musica toca por faixa, troca com fade, respeita o mudo e o volume fica salvo",
-		silent and started and playing and swapped and on_boss
-			and is_equal_approx(muted_db, MusicManager.SILENT_DB) and saved and slider_ok,
-		"sem_arquivo=%s tocou=%s tocando=%s trocou=%s no_chefe=%s mudo=%.0fdB salvo=%s slider=%s" % [
-			silent, started, playing, swapped, on_boss, muted_db, saved, slider_ok])
+	_report("as tres faixas estao instaladas, tocam em loop, trocam com fade e respeitam mudo e volume",
+		installed and looping and missing and started and playing and swapped and on_boss
+			and is_equal_approx(muted_db, MusicManager.SILENT_DB) and resumed and saved and slider_ok,
+		"instaladas=%s loop=%s faixa_inexistente=%s tocou=%s tocando=%s trocou=%s no_chefe=%s mudo=%.0fdB voltou_ao_desmutar=%s salvo=%s slider=%s" % [
+			installed, looping, missing, started, playing, swapped, on_boss, muted_db, resumed,
+			saved, slider_ok])
 
 
 func _check_credits() -> void:
@@ -373,11 +373,12 @@ func _check_credits() -> void:
 	for label in credits._labels:
 		if label.has_meta("needs_music"):
 			music_label = label
-	var music_hidden: bool = music_label != null and not music_label.visible
-	MusicManager._tracks[MusicManager.MENU_TRACK] = AudioStreamWAV.new()
-	credits._apply_translations()
 	var music_shown: bool = music_label != null and music_label.visible
+	var installed: Dictionary = MusicManager._tracks.duplicate()
 	MusicManager._tracks.clear()
+	credits._apply_translations()
+	var music_hidden: bool = music_label != null and not music_label.visible
+	MusicManager._tracks = installed
 	credits._apply_translations()
 
 	var font: Font = credits._back_button.get_theme_font("font")
