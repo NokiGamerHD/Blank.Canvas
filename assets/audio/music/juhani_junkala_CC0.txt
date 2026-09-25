@@ -1,0 +1,19 @@
+Music: Juhani Junkala — "Chiptune Adventures" (4 Chiptunes (Adventure))
+Source: https://opengameart.org/content/4-chiptunes-adventure
+Author homepage: https://juhanijunkala.com/
+License: CC0 1.0 Universal (public domain dedication)
+
+Tracks used in Blank Canvas, renamed for the MusicManager autoload:
+
+  menu.ogg   = "4. Stage Select"
+  arena.ogg  = "1. Stage 1"
+  boss.ogg   = "3. Boss Fight"
+
+The files are the untouched originals from the OGG archive. The author's note
+that ships with the pack:
+
+  "These music tracks have been released under CC0 creative commons license.
+   You can do anything you want with these tunes."
+
+CC0 asks for no attribution; the credit in the game's credits screen and in this
+file is given anyway.

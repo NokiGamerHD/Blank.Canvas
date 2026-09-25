@@ -11,6 +11,7 @@ const FADE_TIME: float = 1.2
 const AUDIO_SECTION: String = "audio"
 const MUSIC_VOLUME_KEY: String = "music_volume"
 const SILENT_DB: float = -60.0
+const TRIM_DB: float = -9.0
 
 @export_range(0.0, 1.0, 0.05) var volume: float = 0.6
 
@@ -57,6 +58,9 @@ func play(track: String) -> bool:
 		_fade_out_all()
 		return false
 	_current = track
+	if _target_db() <= SILENT_DB:
+		_silence()
+		return true
 	var next: int = 1 - _active
 	_players[next].stream = _tracks[track]
 	_players[next].volume_db = SILENT_DB
@@ -98,15 +102,30 @@ func is_playing() -> bool:
 func _target_db() -> float:
 	if volume <= 0.0 or AudioManager.muted:
 		return SILENT_DB
-	return linear_to_db(volume)
+	return linear_to_db(volume) + TRIM_DB
 
 
 func _apply_volume() -> void:
-	if _players.is_empty() or not _players[_active].playing:
+	if _players.is_empty():
+		return
+	if _target_db() <= SILENT_DB:
+		_silence()
+		return
+	if not _players[_active].playing:
+		if _tracks.has(_current):
+			play(_current)
 		return
 	if _fades[_active] != null and _fades[_active].is_valid():
 		_fades[_active].kill()
 	_players[_active].volume_db = _target_db()
+
+
+func _silence() -> void:
+	for index in _players.size():
+		if _fades[index] != null and _fades[index].is_valid():
+			_fades[index].kill()
+		_players[index].volume_db = SILENT_DB
+		_players[index].stop()
 
 
 func _fade(index: int, target_db: float) -> void:

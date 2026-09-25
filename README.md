@@ -85,8 +85,8 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   music volume, mute, fullscreen, screen shake, damage numbers, language,
   rebindable controls and a two-step button to erase the save data
 - A hold-to-open map over the arena, which fades while the player moves
-- Separate music tracks for the menu, the arena and boss waves, crossfading into
-  each other, with their own volume slider
+- Separate chiptune tracks for the menu, the arena and boss waves, crossfading
+  into each other, with their own volume slider
 - A credits screen from the main menu
 - Wave announcements on screen, with a different banner, colour and sound when a
   boss wave starts
@@ -104,7 +104,6 @@ to desktop and Web.
 scenes/     Godot scenes (menu, editors, arena, UI)
 scripts/    source code (GDScript)
 assets/     sprites, fonts, shaders, backgrounds, audio
-press-kit/  store page and event material (screenshots, cover art, icon, banners)
 ```
 
 ## License
@@ -121,10 +120,11 @@ The MIT License does **not** extend to every bundled asset:
   redistribution have not been verified. Anyone reusing or redistributing
   this project is responsible for clearing those sprites independently.
 
-- Any **music** placed in `assets/audio/music/` comes from third-party packs
-  and keeps its own license, which is listed in the game's credits screen. The
-  repository ships no music files; the game runs silently when the folder is
-  empty.
+- The **music** in `assets/audio/music/` is by **Juhani Junkala**, from his
+  *Chiptune Adventures* pack, released under **CC0 1.0** (public domain
+  dedication) — see `assets/audio/music/juhani_junkala_CC0.txt` for the source
+  and the author's own note. The files are the untouched originals, renamed for
+  the three slots the game looks for.
 
 All remaining assets — icon, cover art, background textures, and sound
 effects — are original to this project and are covered by the MIT License
