@@ -1,6 +1,8 @@
 class_name Minimap
 extends Control
 
+signal map_requested
+
 
 const PLAYER_COLOR: Color = Color(0.1, 0.1, 0.1, 1.0)
 const ENEMY_COLOR: Color = Color(0.8, 0.25, 0.2, 0.9)
@@ -28,7 +30,17 @@ var _refresh_countdown: float = 0.0
 
 func _ready() -> void:
 	markers.draw.connect(_on_markers_draw)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	gui_input.connect(_on_gui_input)
 	set_process(false)
+
+
+func _on_gui_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	accept_event()
+	map_requested.emit()
 
 
 func setup(arena: Arena) -> void:

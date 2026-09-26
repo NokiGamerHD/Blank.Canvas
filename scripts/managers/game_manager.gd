@@ -1,11 +1,14 @@
 extends Node
 
 signal settings_changed
+signal input_mode_changed(touch: bool)
 
+
+const TOUCH_MOUSE_GRACE_MS: int = 250
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "3.6.1"
+const VERSION: String = "3.7.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -71,6 +74,8 @@ var screen_shake: bool = true
 var damage_numbers: bool = true
 
 var _default_events: Dictionary = {}
+var _touch_input: bool = false
+var _last_touch_msec: int = 0
 
 
 func _ready() -> void:
@@ -83,8 +88,38 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	_watch_input_mode(event)
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
 		toggle_fullscreen()
+
+
+func uses_touch() -> bool:
+	return _touch_input
+
+
+func set_touch_input(value: bool) -> void:
+	if _touch_input == value:
+		return
+	_touch_input = value
+	input_mode_changed.emit(_touch_input)
+
+
+func _watch_input_mode(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_last_touch_msec = Time.get_ticks_msec()
+		set_touch_input(true)
+		return
+	if not (event is InputEventMouseButton or event is InputEventKey):
+		return
+	if not event.is_pressed():
+		return
+	if event is InputEventKey and not _is_gameplay_key(event):
+		return
+	if event.device < 0:
+		return
+	if Time.get_ticks_msec() - _last_touch_msec < TOUCH_MOUSE_GRACE_MS:
+		return
+	set_touch_input(false)
 
 
 func toggle_fullscreen() -> void:
@@ -137,6 +172,13 @@ func _save_preferences() -> void:
 	var save_error: int = settings.save(SETTINGS_PATH)
 	if save_error != OK:
 		push_warning("[GameManager] Não foi possível salvar as preferências (erro %d)." % save_error)
+
+
+func _is_gameplay_key(event: InputEvent) -> bool:
+	for action in REBINDABLE_ACTIONS:
+		if InputMap.has_action(action) and InputMap.event_is_action(event, action):
+			return true
+	return InputMap.has_action("map") and InputMap.event_is_action(event, "map")
 
 
 func _store_default_events() -> void:

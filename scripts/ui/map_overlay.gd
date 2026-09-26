@@ -27,6 +27,7 @@ var _player: Player = null
 var _enemy_positions: PackedVector2Array = PackedVector2Array()
 var _item_positions: PackedVector2Array = PackedVector2Array()
 var _refresh_countdown: float = 0.0
+var _forced: bool = false
 
 
 func _ready() -> void:
@@ -58,6 +59,7 @@ func _ready() -> void:
 	_markers.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_markers)
 	_markers.draw.connect(_on_markers_draw)
+	gui_input.connect(_on_gui_input)
 
 
 func setup(arena: Arena) -> void:
@@ -70,7 +72,7 @@ func setup(arena: Arena) -> void:
 
 
 func _process(delta: float) -> void:
-	var wanted: bool = Input.is_action_pressed(ACTION) and _player != null \
+	var wanted: bool = (Input.is_action_pressed(ACTION) or _forced) and _player != null \
 		and is_instance_valid(_player) and not _player.is_dead()
 	if wanted != visible:
 		visible = wanted
@@ -87,6 +89,23 @@ func _process(delta: float) -> void:
 		_refresh_countdown = REFRESH_INTERVAL
 		_collect_positions()
 	_markers.queue_redraw()
+
+
+func toggle_forced() -> void:
+	set_forced(not _forced)
+
+
+func set_forced(value: bool) -> void:
+	_forced = value
+	mouse_filter = Control.MOUSE_FILTER_STOP if value else Control.MOUSE_FILTER_IGNORE
+
+
+func _on_gui_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or not _forced:
+		return
+	accept_event()
+	set_forced(false)
 
 
 func is_open() -> bool:

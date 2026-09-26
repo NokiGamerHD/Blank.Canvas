@@ -422,6 +422,10 @@ func is_invulnerable() -> bool:
 	return _invulnerable_timer > 0.0
 
 
+func dash_ready() -> bool:
+	return not _is_dead and _dash_timer <= 0.0 and _dash_cooldown_timer <= 0.0
+
+
 func dash_cooldown_fraction() -> float:
 	if dash_cooldown <= 0.0:
 		return 0.0

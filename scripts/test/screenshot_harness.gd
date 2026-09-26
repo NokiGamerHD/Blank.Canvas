@@ -243,6 +243,7 @@ func _capture_arena() -> void:
 	await _capture_boss_demo(arena)
 	await _capture_fusion_demo(arena)
 	await _capture_flask_demo(arena)
+	await _capture_touch_demo(arena)
 
 	if _spawn_indicator_demo(arena):
 		await _capture("13_indicadores_de_inimigo")
@@ -546,6 +547,43 @@ func _capture_hurt_edges_demo(arena: Arena) -> void:
 	arena.player.take_damage(12.0)
 	await _capture_immediately("32_borda_de_dano")
 	_keep_player_alive(arena)
+
+
+func _capture_touch_demo(arena: Arena) -> void:
+	var touch: TouchControls = arena.hud.touch_controls()
+	if touch == null:
+		return
+	var screen: Vector2 = touch.screen_size()
+	var move_spot: Vector2 = Vector2(screen.x * 0.22, screen.y * 0.74)
+	var aim_spot: Vector2 = Vector2(screen.x * 0.78, screen.y * 0.7)
+	_touch_event(touch, 0, move_spot, true)
+	_touch_event(touch, 1, aim_spot, true)
+	await get_tree().process_frame
+	_touch_drag(touch, 0, move_spot + Vector2(TouchControls.MAX_PULL * 0.8, 18.0))
+	_touch_drag(touch, 1, aim_spot + Vector2(-20.0, -TouchControls.MAX_PULL * 0.9))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _capture_immediately("44_controles_de_toque")
+	_touch_event(touch, 0, move_spot, false)
+	_touch_event(touch, 1, aim_spot, false)
+	await get_tree().process_frame
+	touch.release_all()
+	_keep_player_alive(arena)
+
+
+func _touch_event(touch: TouchControls, index: int, point: Vector2, pressed: bool) -> void:
+	var event: InputEventScreenTouch = InputEventScreenTouch.new()
+	event.index = index
+	event.position = touch.get_viewport().get_final_transform() * point
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+func _touch_drag(touch: TouchControls, index: int, point: Vector2) -> void:
+	var event: InputEventScreenDrag = InputEventScreenDrag.new()
+	event.index = index
+	event.position = touch.get_viewport().get_final_transform() * point
+	Input.parse_input_event(event)
 
 
 func _capture_flask_demo(arena: Arena) -> void:

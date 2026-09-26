@@ -76,6 +76,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if player.is_dead():
 		return
 	get_viewport().set_input_as_handled()
+	_open_pause()
+
+
+func _open_pause() -> void:
+	if pause_screen.visible or progression_screen.visible or in_run_creator_layer.visible:
+		return
+	if player.is_dead():
+		return
+	var touch: TouchControls = hud.touch_controls()
+	if touch != null:
+		touch.release_all()
 	pause_screen.open()
 
 
@@ -116,6 +127,9 @@ func _setup_hud() -> void:
 	hud.setup_abilities(ability_controller)
 	hud.setup_player(player)
 	hud.setup_minimap(self)
+	var touch: TouchControls = hud.touch_controls()
+	if touch != null:
+		touch.pause_requested.connect(_open_pause)
 	hud.setup_enemy_indicators(self)
 
 

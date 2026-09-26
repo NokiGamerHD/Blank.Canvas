@@ -55,6 +55,12 @@ func refresh() -> void:
 		_cells[index].texture = _slot_texture(color, index < _belt.slots.size())
 
 
+func cell_at(index: int) -> Control:
+	if index < 0 or index >= _cells.size():
+		return null
+	return _cells[index]
+
+
 func slot_count() -> int:
 	return _belt.slots.size() if _belt != null else 0
 
@@ -105,7 +111,8 @@ func _build_cell(index: int) -> TextureRect:
 	_row_for(index).add_child(cell)
 
 	var icon: TextureRect = TextureRect.new()
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.mouse_filter = Control.MOUSE_FILTER_STOP
+	icon.gui_input.connect(_on_cell_input.bind(index))
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	icon.custom_minimum_size = Vector2(SLOT_WIDTH * SLOT_SCALE, SLOT_HEIGHT * SLOT_SCALE)
@@ -119,6 +126,16 @@ func _build_cell(index: int) -> TextureRect:
 	key.add_theme_color_override("font_color", KEY_COLOR)
 	cell.add_child(key)
 	return icon
+
+
+func _on_cell_input(event: InputEvent, index: int) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if _belt == null:
+		return
+	accept_event()
+	_belt.use(index)
 
 
 static func _slot_texture(color: Color, filled: bool) -> ImageTexture:

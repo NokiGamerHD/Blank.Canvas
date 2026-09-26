@@ -27,6 +27,8 @@ const TINT_SATURATION_BOOST: float = 0.45
 @export var additional_ability_cooldown_multiplier: float = 1.3
 
 var abilities: Array[AbilityData] = []
+var touch_input: bool = false
+var touch_firing: bool = false
 
 var _player: Player = null
 var _charge_preview: Sprite2D = null
@@ -64,7 +66,7 @@ func _build_ability(index: int, extra_index: int) -> AbilityData:
 
 
 func _physics_process(delta: float) -> void:
-	var holding: bool = Input.is_action_pressed("fire")
+	var holding: bool = touch_firing if touch_input else Input.is_action_pressed("fire")
 	var aim_direction: Vector2 = _aim_direction()
 	var chargers: Array[AbilityData] = []
 

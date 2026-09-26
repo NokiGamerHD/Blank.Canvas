@@ -15,7 +15,7 @@ canvas on every hit. Over time, the battlefield becomes your own painting.
 
 ## Play
 
-🎮 [Play in the browser (itch.io)](https://nokigamerhd.itch.io/blank-canvas)
+🎮 [Play in the browser (itch.io)](https://imperial-bay.itch.io/blank-canvas)
 
 Or open the project in [Godot 4.3+](https://godotengine.org/download).
 
@@ -30,6 +30,10 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   long-ranged
 - **Space** or **Shift** — dash, with a short moment of invulnerability that
   lets you pass through enemies
+- **On a phone**, the browser build switches to touch: drag on the left half to
+  move, drag on the right half to aim and shoot, and use the dash and pause
+  buttons in the corners. Tap a belt slot to drink a flask and tap the minimap
+  to open the full map
 - **1** to **8** — use the paint flask in that slot
 - **Tab** — hold to open the full arena map
 - Every 2 waves, pick one of three **attack upgrades**; every 5 waves the whole
@@ -96,7 +100,9 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
 ## Technology
 
 Built with [Godot 4.3](https://godotengine.org/) and pure GDScript. Exports
-to desktop and Web.
+to desktop and Web, and the Web build plays on phones: it grows virtual sticks
+under your thumbs as soon as it sees a touch, and stays mouse-and-keyboard
+everywhere else.
 
 ## Project structure
 

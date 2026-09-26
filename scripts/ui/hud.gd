@@ -60,6 +60,7 @@ var _palette_row: HBoxContainer = null
 var _palette_label: Label = null
 var _flask_bar: FlaskBar = null
 var _map_overlay: MapOverlay = null
+var _touch_controls: TouchControls = null
 var _dash_icon_large: ImageTexture = null
 var _dash_icon_small: ImageTexture = null
 var _slots: Array[AbilitySlot] = []
@@ -136,6 +137,7 @@ func setup_player(player: Player) -> void:
 		return
 	_dash_icon_large = _build_dash_icon(DASH_ICON_SCALE)
 	_dash_icon_small = _build_dash_icon(1)
+	_build_touch_controls(player)
 	_dash_slot = AbilitySlotScene.instantiate()
 	abilities_row.add_child(_dash_slot)
 	abilities_row.move_child(_dash_slot, 0)
@@ -351,9 +353,25 @@ func _build_controls_hint() -> void:
 	tween.tween_callback(_controls_hint.hide)
 
 
+func touch_controls() -> TouchControls:
+	return _touch_controls
+
+
+func _build_touch_controls(player: Player) -> void:
+	if _touch_controls != null:
+		return
+	_touch_controls = TouchControls.new()
+	add_child(_touch_controls)
+	move_child(_touch_controls, enemy_indicators.get_index())
+	_touch_controls.setup(player, _ability_controller, _dash_icon_large)
+	_apply_translations()
+
+
 func setup_minimap(arena: Arena) -> void:
 	minimap.setup(arena)
 	_build_map_overlay(arena)
+	if _map_overlay != null and not minimap.map_requested.is_connected(_map_overlay.toggle_forced):
+		minimap.map_requested.connect(_map_overlay.toggle_forced)
 
 
 func map_overlay() -> MapOverlay:
@@ -436,7 +454,10 @@ func _apply_translations() -> void:
 	update_wave(_current_wave)
 	enemies_label.text = LocalizationManager.text("hud.enemies", [_alive_enemies])
 	if _controls_hint != null:
-		_controls_hint.text = LocalizationManager.text("hud.controls_hint")
+		var hint_key: String = "hud.controls_hint"
+		if _touch_controls != null and _touch_controls.is_active():
+			hint_key = "hud.controls_hint_touch"
+		_controls_hint.text = LocalizationManager.text(hint_key)
 
 
 func get_stats_panel() -> StatsPanel:
