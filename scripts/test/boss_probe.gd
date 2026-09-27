@@ -5,6 +5,7 @@ const BASE_SHOT_DAMAGE: float = 20.0
 const HIT_INTERVAL: float = 0.05
 const TREE_SECONDS: float = 6.0
 
+var _saved_shop_items: PackedStringArray = PackedStringArray()
 var _arena: Arena = null
 var _failures: int = 0
 var _spawned: int = 0
@@ -13,6 +14,8 @@ var _saved_palettes: int = 0
 
 
 func _ready() -> void:
+	_saved_shop_items = GameManager.shop_items.duplicate()
+	GameManager.shop_items = PackedStringArray()
 	_saved_palettes = GameManager.palettes
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_arena = load(GameManager.SCENE_ARENA).instantiate() as Arena
@@ -48,6 +51,7 @@ func _ready() -> void:
 	await _check_orbs_vanish_at_wave_end()
 
 	GameManager.palettes = _saved_palettes
+	GameManager.shop_items = _saved_shop_items
 	GameManager._save_progress()
 	print("falhas: %d" % _failures)
 	get_tree().quit(1 if _failures > 0 else 0)

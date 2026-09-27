@@ -214,6 +214,8 @@ var _palette_group: ButtonGroup = ButtonGroup.new()
 var _tool_group: ButtonGroup = ButtonGroup.new()
 var _tool_buttons: Dictionary = {}
 var _color_dialog: ColorDialog = null
+var _custom_buttons: Array[Button] = []
+var _metal_buttons: Array[Button] = []
 var _feedback_key: String = ""
 var _feedback_values: Array = []
 
@@ -352,17 +354,16 @@ func _make_tool_style(face_color: Color, border_color: Color, border_width: int)
 
 func _build_palette() -> void:
 	for color in PALETTE_COLORS:
-		var button: Button = _make_swatch_button()
-		_apply_swatch_look(button, color, NORMAL_BORDER_COLOR)
-		button.toggled.connect(_on_palette_button_toggled.bind(color))
-		palette_grid.add_child(button)
+		_add_fixed_swatch(color)
 
 	for slot in CUSTOM_COLOR_SLOTS:
-		var slot_button: Button = _make_swatch_button()
-		slot_button.toggled.connect(_on_custom_slot_toggled.bind(slot))
-		palette_grid.add_child(slot_button)
+		_add_custom_swatch(slot)
+
+	for slot in range(CUSTOM_COLOR_SLOTS, GameManager.custom_color_slots()):
+		_add_custom_swatch(slot)
 
 	_refresh_custom_slots()
+	_build_metal_swatches()
 	_build_custom_color_button()
 
 	var first_button: Button = palette_grid.get_child(0)
@@ -389,15 +390,81 @@ func _apply_swatch_look(button: Button, color: Color, border_color: Color) -> vo
 	button.add_theme_stylebox_override("hover_pressed", selected_style)
 
 
+func _build_metal_swatches() -> void:
+	if not GameManager.has_shop_item(ShopItems.METALLIC):
+		return
+	var header: HBoxContainer = palette_label.get_parent() as HBoxContainer
+	if header == null:
+		push_warning("[DrawingCreator] Cabeçalho da paleta não encontrado; tintas metálicas ignoradas.")
+		return
+	for index in ShopItems.metal_count():
+		var button: Button = _make_swatch_button()
+		_apply_metal_look(button, index)
+		button.toggled.connect(_on_metal_toggled.bind(index))
+		header.add_child(button)
+		header.move_child(button, custom_color_button.get_index())
+		_metal_buttons.append(button)
+
+
+func _apply_metal_look(button: Button, index: int) -> void:
+	var normal_style: StyleBoxTexture = _make_metal_style(index, NORMAL_BORDER_COLOR)
+	var selected_style: StyleBoxTexture = _make_metal_style(index, SELECTED_BORDER_COLOR)
+	button.add_theme_stylebox_override("normal", normal_style)
+	button.add_theme_stylebox_override("hover", normal_style)
+	button.add_theme_stylebox_override("disabled", normal_style)
+	button.add_theme_stylebox_override("pressed", selected_style)
+	button.add_theme_stylebox_override("hover_pressed", selected_style)
+
+
+func _make_metal_style(index: int, border_color: Color) -> StyleBoxTexture:
+	return _make_tile_style(_make_metal_texture(index, border_color))
+
+
+func _make_metal_texture(index: int, border_color: Color) -> ImageTexture:
+	var image: Image = Image.create(SWATCH_TILE_SIZE, SWATCH_TILE_SIZE, false, Image.FORMAT_RGBA8)
+	image.fill(border_color)
+	for y in range(SWATCH_BORDER, SWATCH_TILE_SIZE - SWATCH_BORDER):
+		var band: Color = ShopItems.metal_color(index, y - SWATCH_BORDER)
+		for x in range(SWATCH_BORDER, SWATCH_TILE_SIZE - SWATCH_BORDER):
+			image.set_pixel(x, y, band)
+	_cut_swatch_corners(image)
+	return ImageTexture.create_from_image(image)
+
+
+func _on_metal_toggled(toggled_on: bool, index: int) -> void:
+	if not toggled_on:
+		return
+	pixel_editor.set_metal(index)
+	current_color_swatch.texture = _make_metal_texture(index, SELECTED_BORDER_COLOR)
+	if pixel_editor.current_tool == PixelEditor.Tool.ERASER:
+		_select_tool(PixelEditor.Tool.PENCIL)
+
+
+func _add_fixed_swatch(color: Color) -> void:
+	var button: Button = _make_swatch_button()
+	_apply_swatch_look(button, color, NORMAL_BORDER_COLOR)
+	button.toggled.connect(_on_palette_button_toggled.bind(color))
+	palette_grid.add_child(button)
+
+
+func _add_custom_swatch(slot: int) -> void:
+	var button: Button = _make_swatch_button()
+	button.toggled.connect(_on_custom_slot_toggled.bind(slot))
+	palette_grid.add_child(button)
+	_custom_buttons.append(button)
+
+
 func _custom_slot_button(slot: int) -> Button:
-	return palette_grid.get_child(PALETTE_COLORS.size() + slot) as Button
+	if slot < 0 or slot >= _custom_buttons.size():
+		return null
+	return _custom_buttons[slot]
 
 
 func _refresh_custom_slots() -> void:
-	if palette_grid.get_child_count() < PALETTE_COLORS.size() + CUSTOM_COLOR_SLOTS:
+	if _custom_buttons.is_empty():
 		return
 	var colors: PackedColorArray = GameManager.custom_colors
-	for slot in CUSTOM_COLOR_SLOTS:
+	for slot in _custom_buttons.size():
 		var button: Button = _custom_slot_button(slot)
 		if slot < colors.size():
 			button.disabled = false

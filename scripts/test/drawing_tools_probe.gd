@@ -8,6 +8,7 @@ var _failures: int = 0
 
 
 func _ready() -> void:
+	GameManager.shop_items = PackedStringArray()
 	var scene: PackedScene = load(CREATOR_SCENE)
 	if scene == null:
 		push_warning("[DrawingToolsProbe] Não foi possível carregar %s." % CREATOR_SCENE)
@@ -223,7 +224,7 @@ func _check_alt_pick() -> void:
 
 
 func _check_palette_size() -> void:
-	var expected: int = DrawingCreatorBase.PALETTE_COLORS.size() + DrawingCreatorBase.CUSTOM_COLOR_SLOTS
+	var expected: int = DrawingCreatorBase.PALETTE_COLORS.size() + GameManager.custom_color_slots()
 	var swatches: int = _creator.palette_grid.get_child_count()
 	var unique: Dictionary = {}
 	for color in DrawingCreatorBase.PALETTE_COLORS:

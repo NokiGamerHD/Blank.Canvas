@@ -99,6 +99,12 @@ func attract() -> void:
 	_stop_pop()
 
 
+static func heal_amount() -> float:
+	if GameManager.has_shop_item(ShopItems.TAP):
+		return ShopItems.TAP_HEAL
+	return HEAL
+
+
 func collect() -> void:
 	if _collected:
 		return
@@ -107,7 +113,7 @@ func collect() -> void:
 	var player: Player = _get_player()
 	if player != null:
 		player.add_ink(value)
-		player.heal(HEAL * float(value))
+		player.heal(heal_amount() * float(value))
 	AudioManager.play_ink_pickup()
 	queue_free()
 

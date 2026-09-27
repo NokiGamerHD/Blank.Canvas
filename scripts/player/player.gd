@@ -103,10 +103,18 @@ static var _stain_textures: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("player")
+	_apply_shop_items()
 	current_hp = max_hp
 	_apply_character_texture()
 	flask_belt = FlaskBelt.new()
 	add_child(flask_belt)
+
+
+func _apply_shop_items() -> void:
+	if GameManager.has_shop_item(ShopItems.APRON):
+		max_hp += ShopItems.APRON_HP
+	if GameManager.has_shop_item(ShopItems.BRUSH):
+		pickup_bonus += ShopItems.BRUSH_BONUS
 
 
 func shake(strength: float) -> void:
@@ -168,7 +176,7 @@ func _update_footing(delta: float, moving: bool) -> void:
 		PaintCanvas.Footing.FRESH_MIX:
 			_footing_speed = MIXED_PAINT_SPEED
 		PaintCanvas.Footing.FRESH:
-			_footing_speed = FRESH_PAINT_SPEED
+			_footing_speed = fresh_paint_speed()
 		_:
 			_footing_speed = 1.0
 
@@ -187,6 +195,12 @@ func _update_footing(delta: float, moving: bool) -> void:
 		return
 	_puff_timer = PAINT_PUFF_INTERVAL
 	_spawn_paint_puff(_paint_canvas.color_at(global_position))
+
+
+func fresh_paint_speed() -> float:
+	if GameManager.has_shop_item(ShopItems.SHOES):
+		return ShopItems.SHOES_FOOTING
+	return FRESH_PAINT_SPEED
 
 
 func pickup_radius(base: float) -> float:

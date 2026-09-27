@@ -414,6 +414,8 @@ func _check_erase_save() -> void:
 	var saved_palettes: int = GameManager.palettes
 	var saved_slots: int = GameManager.flask_slots
 	var saved_colors: PackedColorArray = GameManager.custom_colors.duplicate()
+	var saved_items: PackedStringArray = GameManager.shop_items.duplicate()
+	var saved_signature: String = GameManager.signature_name
 
 	var drawing: Image = Image.create(36, 36, false, Image.FORMAT_RGBA8)
 	drawing.fill(Color("f2913d"))
@@ -425,6 +427,8 @@ func _check_erase_save() -> void:
 	GameManager.palettes = 4
 	GameManager.flask_slots = 3
 	GameManager.custom_colors = PackedColorArray([Color.RED])
+	GameManager.shop_items = PackedStringArray([ShopItems.APRON])
+	GameManager.signature_name = "TESTE"
 	GameManager._save_progress()
 	GameManager._save_custom_colors()
 	var had_drawings: bool = GameManager.has_saved_drawings()
@@ -445,7 +449,8 @@ func _check_erase_save() -> void:
 
 	var cleared: bool = not GameManager.has_saved_drawings()
 	var zeroed: bool = GameManager.best_wave == 0 and GameManager.palettes == 0 \
-		and GameManager.flask_slots == FlaskEffects.START_SLOTS and GameManager.custom_colors.is_empty()
+		and GameManager.flask_slots == FlaskEffects.START_SLOTS and GameManager.custom_colors.is_empty() \
+		and GameManager.shop_items.is_empty() and GameManager.signature_name.is_empty()
 	var on_disk: bool = int(_stored(GameManager.PROGRESS_SECTION, GameManager.BEST_WAVE_KEY, -1)) == 0 \
 		and int(_stored(GameManager.PROGRESS_SECTION, GameManager.FLASK_SLOTS_KEY, -1)) == FlaskEffects.START_SLOTS
 	var kept_language: bool = str(_stored(LocalizationManager.SETTINGS_SECTION, "code", "")) != ""
@@ -461,6 +466,8 @@ func _check_erase_save() -> void:
 	GameManager.palettes = saved_palettes
 	GameManager.flask_slots = saved_slots
 	GameManager.custom_colors = saved_colors
+	GameManager.shop_items = saved_items
+	GameManager.signature_name = saved_signature
 	GameManager._save_progress()
 	GameManager._save_custom_colors()
 	var restored: bool = GameManager.best_wave == saved_best \

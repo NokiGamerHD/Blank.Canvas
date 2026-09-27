@@ -49,6 +49,7 @@ const TOOL_KEYS: Dictionary = {
 }
 
 var current_color: Color = Color.BLACK
+var metal_index: int = -1
 var brush_size: int = 1
 var current_tool: Tool = Tool.PENCIL
 var fill_shapes: bool = false
@@ -153,8 +154,8 @@ func _begin_stroke(pos: Vector2, force_erase: bool, force_pick: bool = false) ->
 		return
 
 	if current_tool == Tool.BUCKET:
-		var fill_color: Color = TRANSPARENT if _stroke_erase else current_color
-		if _image.get_pixelv(cell).is_equal_approx(fill_color):
+		var fill_color: Color = paint_color_at(cell)
+		if metal_index < 0 and _image.get_pixelv(cell).is_equal_approx(fill_color):
 			return
 		_push_undo_snapshot()
 		_flood_fill(cell, fill_color)
@@ -231,14 +232,21 @@ func _position_to_cell(pos: Vector2) -> Vector2i:
 	return Vector2i(clampi(cell_x, 0, grid_size - 1), clampi(cell_y, 0, grid_size - 1))
 
 
+func paint_color_at(cell: Vector2i) -> Color:
+	if _stroke_erase:
+		return TRANSPARENT
+	if metal_index >= 0:
+		return ShopItems.metal_color(metal_index, cell.y)
+	return current_color
+
+
 func _apply_brush(center: Vector2i) -> void:
-	var paint_color: Color = TRANSPARENT if _stroke_erase else current_color
 	var half: int = int((brush_size - 1) / 2.0)
 	for offset_y in range(-half, brush_size - half):
 		for offset_x in range(-half, brush_size - half):
 			var pixel: Vector2i = center + Vector2i(offset_x, offset_y)
 			if _is_inside_grid(pixel):
-				_image.set_pixelv(pixel, paint_color)
+				_image.set_pixelv(pixel, paint_color_at(pixel))
 
 
 func _stamp_cells(cells: Array[Vector2i]) -> void:
@@ -251,7 +259,6 @@ func _paint_line(from_cell: Vector2i, to_cell: Vector2i) -> void:
 
 
 func _spray_at(center: Vector2i) -> void:
-	var paint_color: Color = TRANSPARENT if _stroke_erase else current_color
 	var radius: int = brush_size + 1
 	for drop in SPRAY_DROPS:
 		var offset: Vector2i = Vector2i(randi_range(-radius, radius), randi_range(-radius, radius))
@@ -259,7 +266,7 @@ func _spray_at(center: Vector2i) -> void:
 			continue
 		var cell: Vector2i = center + offset
 		if _is_inside_grid(cell):
-			_image.set_pixelv(cell, paint_color)
+			_image.set_pixelv(cell, paint_color_at(cell))
 
 
 func _pick_color(cell: Vector2i) -> void:
@@ -267,6 +274,7 @@ func _pick_color(cell: Vector2i) -> void:
 	if sampled.a <= 0.0:
 		return
 	current_color = sampled
+	metal_index = -1
 	color_picked.emit(sampled)
 
 
@@ -281,7 +289,7 @@ func _flood_fill(origin: Vector2i, fill_color: Color) -> void:
 	var pending: Array[Vector2i] = [origin]
 	while not pending.is_empty():
 		var cell: Vector2i = pending.pop_back()
-		_image.set_pixelv(cell, fill_color)
+		_image.set_pixelv(cell, paint_color_at(cell) if metal_index >= 0 else fill_color)
 		for offset in NEIGHBOR_OFFSETS:
 			var neighbor: Vector2i = cell + offset
 			if not _is_inside_grid(neighbor):
@@ -386,6 +394,12 @@ func _commit_changes() -> void:
 
 func set_current_color(color: Color) -> void:
 	current_color = color
+	metal_index = -1
+
+
+func set_metal(index: int) -> void:
+	metal_index = index
+	current_color = ShopItems.metal_mid_color(index)
 
 
 func set_brush_size(value: int) -> void:

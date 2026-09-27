@@ -7,6 +7,7 @@ const PANEL_TEXT_WIDTH: float = 150.0
 const WARNING_TEXT_WIDTH: float = 130.0
 const EXPECTED_CHECKS: int = 19
 
+var _saved_shop_items: PackedStringArray = PackedStringArray()
 var _arena: Arena = null
 var _player: Player = null
 var _belt: FlaskBelt = null
@@ -18,6 +19,8 @@ var _saved_slots: int = 0
 
 
 func _ready() -> void:
+	_saved_shop_items = GameManager.shop_items.duplicate()
+	GameManager.shop_items = PackedStringArray()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_saved_palettes = GameManager.palettes
 	_saved_slots = GameManager.flask_slots
@@ -69,6 +72,7 @@ func _ready() -> void:
 func _restore() -> void:
 	GameManager.palettes = _saved_palettes
 	GameManager.flask_slots = _saved_slots
+	GameManager.shop_items = _saved_shop_items
 	GameManager._save_progress()
 
 
@@ -574,9 +578,8 @@ func _check_texts_fit() -> void:
 		var table: Dictionary = LocalizationManager.TRANSLATIONS[language]
 		var measures: Array = [
 			[table["flask.slots_full"], WARNING_TEXT_WIDTH, PaintFlask.WARNING_FONT_SIZE],
-			[table["creator.palettes"] % 9, PANEL_TEXT_WIDTH, 8],
-			[table["creator.flask_slots"] % [8, 8], PANEL_TEXT_WIDTH, 8],
-			[table["creator.buy_slot"], PANEL_TEXT_WIDTH, 8],
+			[table["shop.item.belt"], PANEL_TEXT_WIDTH, 8],
+			[table["shop.desc.belt"], PANEL_TEXT_WIDTH * 2, 8],
 		]
 		for measure in measures:
 			var width: float = font.get_string_size(

@@ -17,6 +17,7 @@ var _green: Color = EnemyBase.PRESETS[EnemyBase.EnemyType.TANK]["trail_color"]
 
 
 func _ready() -> void:
+	GameManager.shop_items = PackedStringArray()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var character: Image = Image.create(36, 36, false, Image.FORMAT_RGBA8)
 	character.fill(Color(0, 0, 0, 0))

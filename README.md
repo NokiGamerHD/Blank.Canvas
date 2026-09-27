@@ -79,9 +79,12 @@ Or open the project in [Godot 4.3+](https://godotengine.org/download).
   character, and the yellow one turns shots into seekers and refreshes the dash
 - Walking over fresh paint stains the character in that color and leaves little
   puffs behind
-- Bosses drop a golden palette that stays on the floor until it is picked up; it
-  buys a flask slot in the character editor, up to eight, and carries over
-  between runs
+- Bosses drop a golden palette that stays on the floor until it is picked up, and
+  so does every twice-merged enemy; palettes carry over between runs and are
+  spent in the Studio, the shop on the main menu, on twelve permanent items —
+  flask slots, a starting flask, pickup range, max health, cheaper rerolls and
+  abilities, extra colors in the editor, and a signature or a frame on the canvas
+  you save
 - Progression in two rhythms: attack upgrades in blue every 2 waves, and every 5
   waves the full shop with character upgrades in pink, a golden perk, rerolls
   paid in paint drops and new abilities bought with them

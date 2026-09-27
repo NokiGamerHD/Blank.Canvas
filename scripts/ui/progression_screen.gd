@@ -147,11 +147,19 @@ func ink_owned() -> int:
 
 func new_ability_price() -> int:
 	var owned: int = _controller.get_abilities().size() if _controller != null else _abilities.size()
-	return NEW_ABILITY_BASE_PRICE + NEW_ABILITY_PRICE_STEP * maxi(owned - 1, 0)
+	var price: int = NEW_ABILITY_BASE_PRICE + NEW_ABILITY_PRICE_STEP * maxi(owned - 1, 0)
+	if GameManager.has_shop_item(ShopItems.CONSIGN):
+		price = maxi(price - ShopItems.CONSIGN_DISCOUNT, ShopItems.CONSIGN_FLOOR)
+	return price
 
 
 func reroll_price() -> int:
-	return REROLL_BASE_PRICE + REROLL_PRICE_STEP * _rerolls
+	var paid: int = _rerolls
+	if GameManager.has_shop_item(ShopItems.NOTEBOOK):
+		paid -= 1
+	if paid < 0:
+		return 0
+	return REROLL_BASE_PRICE + REROLL_PRICE_STEP * paid
 
 
 func can_buy_new_ability() -> bool:
@@ -169,6 +177,11 @@ func pay_for_new_ability() -> bool:
 
 
 func reroll() -> bool:
+	if reroll_price() == 0 and _player != null:
+		_rerolls += 1
+		_build_upgrade_options()
+		_refresh_shop()
+		return true
 	if not can_reroll() or not _player.spend_ink(reroll_price()):
 		_refresh_shop()
 		return false

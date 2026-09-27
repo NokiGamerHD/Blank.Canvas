@@ -13,6 +13,7 @@ var _born: int = 0
 
 
 func _ready() -> void:
+	GameManager.shop_items = PackedStringArray()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_arena = load(GameManager.SCENE_ARENA).instantiate() as Arena
 	_arena.arena_size = Vector2(1200.0, 1200.0)

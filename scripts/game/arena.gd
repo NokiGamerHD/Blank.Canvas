@@ -115,6 +115,21 @@ func _setup_player() -> void:
 		Vector2(-camera_margin, -camera_margin),
 		arena_size + Vector2(camera_margin, camera_margin) * 2.0
 	))
+	_give_starting_flask()
+
+
+func _give_starting_flask() -> void:
+	if not GameManager.has_shop_item(ShopItems.CASE) or player.flask_belt == null:
+		return
+	var types: Array[int] = [
+		EnemyBase.EnemyType.COMMON, EnemyBase.EnemyType.FAST,
+		EnemyBase.EnemyType.TANK, EnemyBase.EnemyType.STALKER,
+	]
+	var type: int = types[randi() % types.size()]
+	var effect: String = FlaskEffects.for_type(type)
+	if effect.is_empty():
+		return
+	player.flask_belt.store(EnemyBase.PRESETS[type]["trail_color"], [effect])
 
 
 func _setup_hud() -> void:

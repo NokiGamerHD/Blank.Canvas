@@ -65,6 +65,8 @@ const FLASK_DEMO_SLOTS: int = 6
 var _saved_palettes: int = 0
 var _saved_best_wave: int = 0
 var _saved_slots: int = 0
+var _saved_items: PackedStringArray = PackedStringArray()
+var _saved_signature: String = ""
 
 
 func _ready() -> void:
@@ -72,6 +74,8 @@ func _ready() -> void:
 	_saved_palettes = GameManager.palettes
 	_saved_best_wave = GameManager.best_wave
 	_saved_slots = GameManager.flask_slots
+	_saved_items = GameManager.shop_items.duplicate()
+	_saved_signature = GameManager.signature_name
 	var language: String = OS.get_environment("SHOT_LANG")
 	if not language.is_empty():
 		LocalizationManager.set_language(language)
@@ -89,6 +93,8 @@ func _ready() -> void:
 	GameManager.palettes = _saved_palettes
 	GameManager.best_wave = _saved_best_wave
 	GameManager.flask_slots = _saved_slots
+	GameManager.shop_items = _saved_items
+	GameManager.signature_name = _saved_signature
 	GameManager._save_progress()
 	get_tree().quit()
 
@@ -165,6 +171,19 @@ func _capture_main_menu() -> void:
 	settings._show_page(true)
 	settings.close()
 
+	var shop_palettes: int = GameManager.palettes
+	var shop_items: PackedStringArray = GameManager.shop_items.duplicate()
+	GameManager.palettes = 5
+	GameManager.shop_items = PackedStringArray([ShopItems.BRUSH, ShopItems.SIGNATURE])
+	GameManager.signature_name = "LUCA"
+	var shop: ShopScreen = menu.shop_screen()
+	shop.open()
+	shop._on_item_focused(ShopItems.TAP)
+	await _capture("45_atelie")
+	shop.close()
+	GameManager.palettes = shop_palettes
+	GameManager.shop_items = shop_items
+
 	var credits: CreditsScreen = menu._credits_screen
 	credits.open()
 	await _capture("43_creditos")
@@ -173,15 +192,29 @@ func _capture_main_menu() -> void:
 	await _clear_scene(menu)
 
 
+func _capture_metal_paint(creator: Node) -> void:
+	var editor: PixelEditor = creator.pixel_editor
+	var cell_size: float = editor.size.x / float(editor.grid_size)
+	editor.set_metal(1)
+	editor.set_tool(PixelEditor.Tool.RECTANGLE)
+	editor.set_brush_size(1)
+	editor.fill_shapes = true
+	var from_point: Vector2 = (Vector2(6, 8) + Vector2(0.5, 0.5)) * cell_size
+	var to_point: Vector2 = (Vector2(29, 27) + Vector2(0.5, 0.5)) * cell_size
+	editor._begin_stroke(from_point, false)
+	editor._continue_stroke(to_point)
+	editor._end_stroke(to_point)
+	await _capture("46_tintas_metalicas")
+
+
 func _capture_creators() -> void:
+	var creator_items: PackedStringArray = GameManager.shop_items.duplicate()
+	GameManager.shop_items = PackedStringArray([ShopItems.METALLIC, ShopItems.PALETTE])
+
 	var character: Node = _show_scene(GameManager.SCENE_CHARACTER_CREATOR)
 	if character != null:
-		var saved_palettes: int = GameManager.palettes
-		GameManager.palettes = 3
-		character.call("_refresh_flask_shop")
 		await _capture("08_criador_personagem")
-		GameManager.palettes = saved_palettes
-		character.call("_refresh_flask_shop")
+		await _capture_metal_paint(character)
 		if character.open_color_dialog():
 			await _capture("11_seletor_de_cor")
 		await _clear_scene(character)
@@ -194,6 +227,8 @@ func _capture_creators() -> void:
 			ability.get_shot_picker().select(AbilityData.ShotType.CHARGE)
 			await _capture("22_escolha_de_tiro_marcado")
 		await _clear_scene(ability)
+
+	GameManager.shop_items = creator_items
 
 
 func _capture_arena() -> void:

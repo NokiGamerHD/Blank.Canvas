@@ -10,6 +10,7 @@ var _failures: int = 0
 
 
 func _ready() -> void:
+	GameManager.shop_items = PackedStringArray()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_arena = load(GameManager.SCENE_ARENA).instantiate() as Arena
 	_arena.arena_size = Vector2(2200.0, 2200.0)

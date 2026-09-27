@@ -936,6 +936,7 @@ func _die() -> void:
 	_splat_on_death()
 	_drop_ink()
 	_drop_flask()
+	_drop_palette()
 	AudioManager.play_enemy_death()
 	died.emit(self)
 
@@ -963,6 +964,17 @@ func _drop_ink() -> void:
 		drop.setup(trail_color)
 		drop.position = container.to_local(global_position)
 		container.add_child(drop)
+
+
+func _drop_palette() -> void:
+	if is_boss or fusion_tier < FUSION_MAX_TIER:
+		return
+	var container: Node2D = get_tree().get_first_node_in_group(PaintDrop.CONTAINER_GROUP) as Node2D
+	if container == null:
+		return
+	var coin: PaletteCoin = PaletteCoin.new()
+	coin.position = container.to_local(global_position)
+	container.add_child(coin)
 
 
 func _drop_flask() -> void:

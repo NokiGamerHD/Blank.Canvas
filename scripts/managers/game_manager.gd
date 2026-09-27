@@ -8,7 +8,7 @@ const TOUCH_MOUSE_GRACE_MS: int = 250
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "3.7.1"
+const VERSION: String = "3.8.0"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
@@ -30,6 +30,8 @@ const PROGRESS_SECTION: String = "progress"
 const BEST_WAVE_KEY: String = "best_wave"
 const PALETTES_KEY: String = "palettes"
 const FLASK_SLOTS_KEY: String = "flask_slots"
+const SHOP_ITEMS_KEY: String = "shop_items"
+const SIGNATURE_KEY: String = "signature_name"
 const PALETTE_SECTION: String = "palette"
 const CUSTOM_COLORS_KEY: String = "custom_colors"
 const MAX_CUSTOM_COLORS: int = 10
@@ -62,6 +64,10 @@ var best_wave: int = 0
 var palettes: int = 0
 
 var flask_slots: int = FlaskEffects.START_SLOTS
+
+var shop_items: PackedStringArray = PackedStringArray()
+
+var signature_name: String = ""
 
 var last_run_was_record: bool = false
 
@@ -325,6 +331,8 @@ func reset_save() -> bool:
 	best_wave = 0
 	palettes = 0
 	flask_slots = FlaskEffects.START_SLOTS
+	shop_items = PackedStringArray()
+	signature_name = ""
 	custom_colors = PackedColorArray()
 	screen_shake = true
 	damage_numbers = true
@@ -367,17 +375,56 @@ func add_palettes(amount: int) -> void:
 
 
 func can_buy_flask_slot() -> bool:
-	return flask_slots < FlaskEffects.MAX_SLOTS and palettes >= FlaskEffects.SLOT_PRICE
+	return flask_slots < FlaskEffects.MAX_SLOTS and palettes >= ShopItems.price(ShopItems.BELT)
 
 
 func buy_flask_slot() -> bool:
 	if not can_buy_flask_slot():
 		return false
-	palettes -= FlaskEffects.SLOT_PRICE
+	palettes -= ShopItems.price(ShopItems.BELT)
 	flask_slots += 1
 	_save_progress()
 	settings_changed.emit()
 	return true
+
+
+func has_shop_item(id: String) -> bool:
+	return shop_items.has(id)
+
+
+func shop_item_sold_out(id: String) -> bool:
+	if id == ShopItems.BELT:
+		return flask_slots >= FlaskEffects.MAX_SLOTS
+	return has_shop_item(id)
+
+
+func can_buy_shop_item(id: String) -> bool:
+	if not ShopItems.PRICES.has(id) or shop_item_sold_out(id):
+		return false
+	return palettes >= ShopItems.price(id)
+
+
+func buy_shop_item(id: String) -> bool:
+	if not can_buy_shop_item(id):
+		return false
+	if id == ShopItems.BELT:
+		return buy_flask_slot()
+	palettes -= ShopItems.price(id)
+	shop_items.append(id)
+	_save_progress()
+	settings_changed.emit()
+	return true
+
+
+func custom_color_slots() -> int:
+	if has_shop_item(ShopItems.PALETTE):
+		return MAX_CUSTOM_COLORS + ShopItems.EXTRA_COLOR_SLOTS
+	return MAX_CUSTOM_COLORS
+
+
+func set_signature_name(value: String) -> void:
+	signature_name = value.strip_edges().to_upper().substr(0, ShopItems.MAX_SIGNATURE_LENGTH)
+	_save_progress()
 
 
 func _load_progress() -> void:
@@ -388,6 +435,12 @@ func _load_progress() -> void:
 	palettes = maxi(int(settings.get_value(PROGRESS_SECTION, PALETTES_KEY, 0)), 0)
 	flask_slots = clampi(int(settings.get_value(PROGRESS_SECTION, FLASK_SLOTS_KEY, FlaskEffects.START_SLOTS)),
 		FlaskEffects.START_SLOTS, FlaskEffects.MAX_SLOTS)
+	var stored_items: Variant = settings.get_value(PROGRESS_SECTION, SHOP_ITEMS_KEY, PackedStringArray())
+	if stored_items is PackedStringArray:
+		shop_items = stored_items
+	else:
+		push_warning("[GameManager] Itens da loja salvos em formato inesperado, ignorando.")
+	signature_name = str(settings.get_value(PROGRESS_SECTION, SIGNATURE_KEY, ""))
 
 
 func _save_progress() -> void:
@@ -396,6 +449,8 @@ func _save_progress() -> void:
 	settings.set_value(PROGRESS_SECTION, BEST_WAVE_KEY, best_wave)
 	settings.set_value(PROGRESS_SECTION, PALETTES_KEY, palettes)
 	settings.set_value(PROGRESS_SECTION, FLASK_SLOTS_KEY, flask_slots)
+	settings.set_value(PROGRESS_SECTION, SHOP_ITEMS_KEY, shop_items)
+	settings.set_value(PROGRESS_SECTION, SIGNATURE_KEY, signature_name)
 	var save_error: int = settings.save(SETTINGS_PATH)
 	if save_error != OK:
 		push_warning("[GameManager] Não foi possível salvar o recorde (erro %d)." % save_error)
@@ -405,7 +460,7 @@ func add_custom_color(color: Color) -> int:
 	for index in custom_colors.size():
 		if custom_colors[index].is_equal_approx(color):
 			return index
-	if custom_colors.size() >= MAX_CUSTOM_COLORS:
+	if custom_colors.size() >= custom_color_slots():
 		custom_colors.remove_at(0)
 	custom_colors.append(color)
 	_save_custom_colors()
@@ -421,8 +476,8 @@ func _load_custom_colors() -> void:
 		push_warning("[GameManager] Cores personalizadas salvas em formato inesperado, ignorando.")
 		return
 	custom_colors = stored
-	if custom_colors.size() > MAX_CUSTOM_COLORS:
-		custom_colors = custom_colors.slice(custom_colors.size() - MAX_CUSTOM_COLORS)
+	if custom_colors.size() > custom_color_slots():
+		custom_colors = custom_colors.slice(custom_colors.size() - custom_color_slots())
 
 
 func _save_custom_colors() -> void:
@@ -620,8 +675,18 @@ func save_last_canvas_to_disk() -> String:
 	return _save_last_canvas_disk()
 
 
+func decorated_canvas() -> Image:
+	if last_canvas_snapshot == null:
+		return null
+	var signature: String = signature_name if has_shop_item(ShopItems.SIGNATURE) else ""
+	var framed: bool = has_shop_item(ShopItems.FRAME)
+	if signature.is_empty() and not framed:
+		return last_canvas_snapshot
+	return CanvasFrame.decorate(last_canvas_snapshot, signature, framed)
+
+
 func _save_last_canvas_web() -> String:
-	var buffer: PackedByteArray = last_canvas_snapshot.save_png_to_buffer()
+	var buffer: PackedByteArray = decorated_canvas().save_png_to_buffer()
 	if buffer.is_empty():
 		push_warning("[GameManager] Falha ao gerar o PNG do cenário para download.")
 		return ""
@@ -638,7 +703,7 @@ func _save_last_canvas_disk() -> String:
 			push_warning("[GameManager] Não foi possível criar %s (erro %d)." % [SAVED_SCENARIOS_DIR, dir_error])
 			return ""
 	var path: String = "%s/scenario_%d.png" % [SAVED_SCENARIOS_DIR, int(Time.get_unix_time_from_system())]
-	var save_error: int = last_canvas_snapshot.save_png(path)
+	var save_error: int = decorated_canvas().save_png(path)
 	if save_error != OK:
 		push_warning("[GameManager] Falha ao salvar o cenário (erro %d)." % save_error)
 		return ""

@@ -34,6 +34,7 @@ const SHINE_MIN: float = 0.82
 
 static var _texture: ImageTexture = null
 
+var value: int = 1
 var _sprite: Sprite2D = null
 var _hop_tween: Tween = null
 var _landed: bool = false
@@ -107,7 +108,7 @@ func collect() -> void:
 		return
 	_collected = true
 	_stop_hop()
-	GameManager.add_palettes(1)
+	GameManager.add_palettes(value)
 	AudioManager.play_palette_pickup()
 	queue_free()
 

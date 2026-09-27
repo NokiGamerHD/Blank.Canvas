@@ -168,6 +168,10 @@ func progression_for_wave(wave: int) -> Progression:
 	return Progression.NONE
 
 
+const LATE_BOSS_WAVE: int = 20
+const LATE_BOSS_PALETTES: int = 2
+
+
 func _drop_palette_coin() -> void:
 	if not is_boss_wave(current_wave):
 		return
@@ -176,6 +180,7 @@ func _drop_palette_coin() -> void:
 		push_warning("[WaveManager] Sem container de drops; a paleta do chefe não caiu.")
 		return
 	var coin: PaletteCoin = PaletteCoin.new()
+	coin.value = LATE_BOSS_PALETTES if current_wave >= LATE_BOSS_WAVE else 1
 	coin.position = container.to_local(_last_boss_spot)
 	container.add_child(coin)
 
