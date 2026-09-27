@@ -4,6 +4,7 @@ extends Control
 const SLOT_WIDTH: int = 13
 const SLOT_HEIGHT: int = 16
 const SLOT_SCALE: int = 2
+const TOUCH_SLOT_SCALE: int = 4
 const SLOT_SEPARATION: int = 4
 const SLOTS_PER_ROW: int = 4
 const ROW_SEPARATION: int = 3
@@ -27,6 +28,20 @@ func _ready() -> void:
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_theme_constant_override("separation", ROW_SEPARATION)
 	add_child(_column)
+	GameManager.input_mode_changed.connect(_on_input_mode_changed)
+
+
+func slot_scale() -> int:
+	return TOUCH_SLOT_SCALE if GameManager.uses_touch() else SLOT_SCALE
+
+
+func _on_input_mode_changed(_touch: bool) -> void:
+	for row in _rows:
+		_column.remove_child(row)
+		row.queue_free()
+	_rows.clear()
+	_cells.clear()
+	refresh()
 
 
 func setup(belt: FlaskBelt) -> void:
@@ -48,11 +63,13 @@ func refresh() -> void:
 		_cells.append(_build_cell(_cells.size()))
 	_drop_empty_rows()
 
+	custom_minimum_size = _column.get_combined_minimum_size()
+
 	for index in _cells.size():
 		var color: Color = EMPTY_COLOR
 		if index < _belt.slots.size():
 			color = _belt.slots[index]["color"]
-		_cells[index].texture = _slot_texture(color, index < _belt.slots.size())
+		_cells[index].texture = _slot_texture(color, index < _belt.slots.size(), slot_scale())
 
 
 func cell_at(index: int) -> Control:
@@ -115,8 +132,11 @@ func _build_cell(index: int) -> TextureRect:
 	icon.gui_input.connect(_on_cell_input.bind(index))
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	icon.custom_minimum_size = Vector2(SLOT_WIDTH * SLOT_SCALE, SLOT_HEIGHT * SLOT_SCALE)
+	icon.custom_minimum_size = Vector2(SLOT_WIDTH * slot_scale(), SLOT_HEIGHT * slot_scale())
 	cell.add_child(icon)
+
+	if GameManager.uses_touch():
+		return icon
 
 	var key: Label = Label.new()
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -138,8 +158,8 @@ func _on_cell_input(event: InputEvent, index: int) -> void:
 	_belt.use(index)
 
 
-static func _slot_texture(color: Color, filled: bool) -> ImageTexture:
-	var key: String = "%s|%s" % [color.to_html(), filled]
+static func _slot_texture(color: Color, filled: bool, scale: int) -> ImageTexture:
+	var key: String = "%s|%s|%d" % [color.to_html(), filled, scale]
 	if _slot_cache.has(key):
 		return _slot_cache[key]
 
@@ -167,7 +187,7 @@ static func _slot_texture(color: Color, filled: bool) -> ImageTexture:
 				if (x + y) % 2 == 0:
 					image.set_pixel(x, y, EMPTY_COLOR)
 
-	image.resize(SLOT_WIDTH * SLOT_SCALE, SLOT_HEIGHT * SLOT_SCALE, Image.INTERPOLATE_NEAREST)
+	image.resize(SLOT_WIDTH * scale, SLOT_HEIGHT * scale, Image.INTERPOLATE_NEAREST)
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
 	_slot_cache[key] = texture
 	return texture

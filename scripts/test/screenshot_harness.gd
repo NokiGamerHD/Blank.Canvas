@@ -553,9 +553,8 @@ func _capture_touch_demo(arena: Arena) -> void:
 	var touch: TouchControls = arena.hud.touch_controls()
 	if touch == null:
 		return
-	var screen: Vector2 = touch.screen_size()
-	var move_spot: Vector2 = Vector2(screen.x * 0.22, screen.y * 0.74)
-	var aim_spot: Vector2 = Vector2(screen.x * 0.78, screen.y * 0.7)
+	var move_spot: Vector2 = touch.move_stick_center()
+	var aim_spot: Vector2 = touch.aim_stick_center()
 	_touch_event(touch, 0, move_spot, true)
 	_touch_event(touch, 1, aim_spot, true)
 	await get_tree().process_frame

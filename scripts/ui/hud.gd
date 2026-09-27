@@ -364,6 +364,7 @@ func _build_touch_controls(player: Player) -> void:
 	add_child(_touch_controls)
 	move_child(_touch_controls, enemy_indicators.get_index())
 	_touch_controls.setup(player, _ability_controller, _dash_icon_large)
+	_touch_controls.add_blocker(_flask_bar)
 	_apply_translations()
 
 

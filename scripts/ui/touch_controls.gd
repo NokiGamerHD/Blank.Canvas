@@ -3,18 +3,23 @@ extends Control
 
 signal pause_requested
 
-const RING_ART_RADIUS: int = 13
-const RING_INNER_RADIUS: float = 10.0
-const KNOB_ART_RADIUS: int = 5
+const RING_ART_RADIUS: int = 26
+const RING_INNER_RADIUS: float = 22.2
+const KNOB_ART_RADIUS: int = 10
 const STICK_SCALE: int = 3
-const DEAD_ZONE: float = 0.22
-const MAX_PULL: float = 64.0
+const DEAD_ZONE: float = 0.18
+const MAX_PULL: float = 72.0
+const STICK_MARGIN: int = 34
 const AIM_DISTANCE: float = 220.0
 const ZONE_TOP_FRACTION: float = 0.28
-const BUTTON_SIZE: int = 48
-const BUTTON_MARGIN: int = 14
-const PAUSE_SIZE: int = 30
-const PAUSE_SCALE: int = 4
+const BUTTON_ART_RADIUS: int = 9
+const BUTTON_SCALE: int = 3
+const BUTTON_GAP: int = 8
+const TOUCH_PADDING: int = 12
+const PAUSE_SIZE: int = 44
+const PAUSE_MARGIN: int = 10
+const PAUSE_SCALE: int = 6
+const IDLE_DIM: float = 0.6
 const RING_FILL_COLOR: Color = Color(0.96, 0.96, 0.93, 0.34)
 const RING_EDGE_COLOR: Color = Color(0.15, 0.15, 0.15, 0.62)
 const KNOB_FILL_COLOR: Color = Color(0.96, 0.96, 0.93, 0.85)
@@ -41,12 +46,13 @@ var _disc_texture: ImageTexture = null
 var _knob_texture: ImageTexture = null
 var _knob_edge_texture: ImageTexture = null
 var _pause_texture: ImageTexture = null
+var _button_face_texture: ImageTexture = null
+var _button_edge_texture: ImageTexture = null
 var _move_touch: int = -1
 var _aim_touch: int = -1
-var _move_origin: Vector2 = Vector2.ZERO
 var _move_point: Vector2 = Vector2.ZERO
-var _aim_origin: Vector2 = Vector2.ZERO
 var _aim_point: Vector2 = Vector2.ZERO
+var _blockers: Array[Control] = []
 var _dash_touch: int = -1
 var _pause_touch: int = -1
 var _active: bool = false
@@ -62,6 +68,8 @@ func _ready() -> void:
 	_knob_texture = _build_disc(KNOB_ART_RADIUS, -1.0)
 	_knob_edge_texture = _build_disc(KNOB_ART_RADIUS, float(KNOB_ART_RADIUS) - 1.6)
 	_pause_texture = _build_pattern(PAUSE_PATTERN, PAUSE_SCALE)
+	_button_face_texture = _build_disc(BUTTON_ART_RADIUS, -1.0)
+	_button_edge_texture = _build_disc(BUTTON_ART_RADIUS, float(BUTTON_ART_RADIUS) - 1.4)
 	GameManager.input_mode_changed.connect(_on_input_mode_changed)
 	_on_input_mode_changed(GameManager.uses_touch())
 
@@ -74,6 +82,11 @@ func setup(player: Player, controller: AbilityController, dash_icon: Texture2D) 
 		_controller.touch_input = _active
 
 
+func add_blocker(control: Control) -> void:
+	if control != null and not _blockers.has(control):
+		_blockers.append(control)
+
+
 func is_active() -> bool:
 	return _active
 
@@ -82,16 +95,39 @@ func screen_size() -> Vector2:
 	return get_viewport_rect().size
 
 
-func dash_button_rect() -> Rect2:
+func stick_radius() -> float:
+	return float(RING_ART_RADIUS * STICK_SCALE)
+
+
+func move_stick_center() -> Vector2:
+	var radius: float = stick_radius()
+	return Vector2(float(STICK_MARGIN) + radius, screen_size().y - float(STICK_MARGIN) - radius)
+
+
+func aim_stick_center() -> Vector2:
+	var radius: float = stick_radius()
 	var screen: Vector2 = screen_size()
-	var side: float = float(BUTTON_SIZE)
-	return Rect2(Vector2(screen.x - side - BUTTON_MARGIN, screen.y - side - BUTTON_MARGIN),
-		Vector2(side, side))
+	return Vector2(screen.x - float(STICK_MARGIN) - radius, screen.y - float(STICK_MARGIN) - radius)
+
+
+func dash_button_radius() -> float:
+	return float(BUTTON_ART_RADIUS * BUTTON_SCALE)
+
+
+func dash_button_center() -> Vector2:
+	var reach: float = stick_radius() + float(BUTTON_GAP) + dash_button_radius()
+	return aim_stick_center() + Vector2(-0.7071, -0.7071) * reach
+
+
+func dash_button_rect() -> Rect2:
+	var radius: float = dash_button_radius()
+	return Rect2((dash_button_center() - Vector2(radius, radius)).floor(),
+		Vector2(radius, radius) * 2.0)
 
 
 func pause_button_rect() -> Rect2:
 	var side: float = float(PAUSE_SIZE)
-	return Rect2(Vector2((screen_size().x - side) * 0.5, float(BUTTON_MARGIN)), Vector2(side, side))
+	return Rect2(Vector2((screen_size().x - side) * 0.5, float(PAUSE_MARGIN)), Vector2(side, side))
 
 
 func _input(event: InputEvent) -> void:
@@ -151,37 +187,46 @@ func _on_input_mode_changed(touch: bool) -> void:
 	queue_redraw()
 
 
+func _touched(rect: Rect2, point: Vector2) -> bool:
+	return rect.grow(float(TOUCH_PADDING)).has_point(point)
+
+
 func _begin_touch(index: int, point: Vector2) -> void:
-	if pause_button_rect().has_point(point):
+	if _touched(pause_button_rect(), point):
 		_pause_touch = index
+		pause_requested.emit()
 		queue_redraw()
 		return
-	if dash_button_rect().has_point(point):
+	if point.distance_to(dash_button_center()) <= dash_button_radius() + float(TOUCH_PADDING):
 		_dash_touch = index
 		_try_dash()
 		queue_redraw()
 		return
 	var screen: Vector2 = screen_size()
-	if point.y < screen.y * ZONE_TOP_FRACTION:
+	if point.y < screen.y * ZONE_TOP_FRACTION or _blocked(point):
 		return
 	if point.x < screen.x * 0.5:
 		if _move_touch >= 0:
 			return
 		_move_touch = index
-		_move_origin = point
 		_move_point = point
 		return
 	if _aim_touch >= 0:
 		return
 	_aim_touch = index
-	_aim_origin = point
 	_aim_point = point
+
+
+func _blocked(point: Vector2) -> bool:
+	for control in _blockers:
+		if is_instance_valid(control) and control.get_global_rect().has_point(point):
+			return true
+	return false
 
 
 func _end_touch(index: int) -> void:
 	if index == _pause_touch:
 		_pause_touch = -1
-		pause_requested.emit()
 		queue_redraw()
 		return
 	if index == _dash_touch:
@@ -208,7 +253,7 @@ func _pull(origin: Vector2, point: Vector2) -> Vector2:
 func _apply_move() -> void:
 	var pull: Vector2 = Vector2.ZERO
 	if _move_touch >= 0:
-		pull = _pull(_move_origin, _move_point)
+		pull = _pull(move_stick_center(), _move_point)
 	_set_axis("move_left", maxf(-pull.x, 0.0))
 	_set_axis("move_right", maxf(pull.x, 0.0))
 	_set_axis("move_up", maxf(-pull.y, 0.0))
@@ -228,7 +273,7 @@ func _apply_aim() -> void:
 		return
 	var pull: Vector2 = Vector2.ZERO
 	if _aim_touch >= 0:
-		pull = _pull(_aim_origin, _aim_point)
+		pull = _pull(aim_stick_center(), _aim_point)
 	if pull == Vector2.ZERO:
 		_controller.touch_firing = false
 		return
@@ -247,32 +292,36 @@ func _try_dash() -> void:
 		return
 	var direction: Vector2 = Vector2.ZERO
 	if _move_touch >= 0:
-		direction = _pull(_move_origin, _move_point)
+		direction = _pull(move_stick_center(), _move_point)
 	_player.try_dash(direction)
 
 
 func _draw() -> void:
 	if not _active:
 		return
-	if _move_touch >= 0:
-		_draw_stick(_move_origin, _move_point)
-	if _aim_touch >= 0:
-		_draw_stick(_aim_origin, _aim_point)
+	_draw_stick(move_stick_center(), _move_point, _move_touch >= 0)
+	_draw_stick(aim_stick_center(), _aim_point, _aim_touch >= 0)
 	_draw_dash_button()
 	_draw_pause_button()
 
 
-func _draw_stick(origin: Vector2, point: Vector2) -> void:
-	_draw_centered(_disc_texture, origin, STICK_SCALE, RING_FILL_COLOR)
-	_draw_centered(_ring_texture, origin, STICK_SCALE, RING_EDGE_COLOR)
-	var travel: float = float((RING_ART_RADIUS - KNOB_ART_RADIUS) * STICK_SCALE)
-	var offset: Vector2 = point - origin
-	var strength: float = clampf(offset.length() / MAX_PULL, 0.0, 1.0)
-	if not offset.is_zero_approx():
-		offset = offset.normalized() * travel * strength
-	var knob: Vector2 = origin + offset
-	_draw_centered(_knob_texture, knob, STICK_SCALE, KNOB_FILL_COLOR)
-	_draw_centered(_knob_edge_texture, knob, STICK_SCALE, KNOB_EDGE_COLOR)
+func _draw_stick(center: Vector2, point: Vector2, held: bool) -> void:
+	var dim: float = 1.0 if held else IDLE_DIM
+	_draw_centered(_disc_texture, center, STICK_SCALE, _faded(RING_FILL_COLOR, dim))
+	_draw_centered(_ring_texture, center, STICK_SCALE, _faded(RING_EDGE_COLOR, dim))
+	var knob: Vector2 = center
+	if held:
+		var travel: float = float((RING_ART_RADIUS - KNOB_ART_RADIUS) * STICK_SCALE)
+		var offset: Vector2 = point - center
+		var strength: float = clampf(offset.length() / MAX_PULL, 0.0, 1.0)
+		if not offset.is_zero_approx():
+			knob = center + offset.normalized() * travel * strength
+	_draw_centered(_knob_texture, knob, STICK_SCALE, _faded(KNOB_FILL_COLOR, dim))
+	_draw_centered(_knob_edge_texture, knob, STICK_SCALE, _faded(KNOB_EDGE_COLOR, dim))
+
+
+func _faded(color: Color, factor: float) -> Color:
+	return Color(color.r, color.g, color.b, color.a * factor)
 
 
 func _draw_centered(texture: ImageTexture, center: Vector2, scale: int, color: Color) -> void:
@@ -282,17 +331,17 @@ func _draw_centered(texture: ImageTexture, center: Vector2, scale: int, color: C
 
 
 func _draw_dash_button() -> void:
-	var rect: Rect2 = dash_button_rect()
+	var center: Vector2 = dash_button_center()
 	var ready: bool = _player != null and is_instance_valid(_player) and _player.dash_ready()
 	var face: Color = FACE_READY_COLOR if ready else FACE_COLOR
 	if _dash_touch >= 0:
 		face = PRESSED_TINT
-	draw_rect(rect, EDGE_COLOR, true)
-	draw_rect(rect.grow(-float(EDGE_THICKNESS)), face, true)
+	_draw_centered(_button_face_texture, center, BUTTON_SCALE, face)
+	_draw_centered(_button_edge_texture, center, BUTTON_SCALE, EDGE_COLOR)
 	if _dash_icon == null:
 		return
 	var icon: Vector2 = Vector2(_dash_icon.get_size())
-	var spot: Vector2 = (rect.position + (rect.size - icon) * 0.5).floor()
+	var spot: Vector2 = (center - icon * 0.5).floor()
 	draw_texture(_dash_icon, spot, Color(1.0, 1.0, 1.0, 1.0 if ready else 0.45))
 
 

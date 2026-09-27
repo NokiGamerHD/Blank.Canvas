@@ -1,7 +1,7 @@
 extends Node
 
 const PLAYER_SPOT: Vector2 = Vector2(600.0, 600.0)
-const EXPECTED_CHECKS: int = 11
+const EXPECTED_CHECKS: int = 14
 
 var _arena: Arena = null
 var _player: Player = null
@@ -36,6 +36,8 @@ func _ready() -> void:
 	_touch.pause_requested.connect(func() -> void: _paused_asked += 1)
 
 	await _check_activation()
+	await _check_static_sticks()
+	await _check_dash_beside_aim()
 	await _check_move_stick()
 	await _check_aim_stick()
 	await _check_left_stick_does_not_fire()
@@ -43,6 +45,7 @@ func _ready() -> void:
 	await _check_pause_button()
 	await _check_release_on_pause()
 	await _check_flask_tap()
+	await _check_flask_cell_size()
 	await _check_minimap_tap()
 	await _check_mouse_leaves_touch_mode()
 	await _check_typing_keeps_touch_mode()
@@ -96,11 +99,11 @@ func _release(index: int, point: Vector2) -> void:
 
 
 func _left_spot() -> Vector2:
-	return Vector2(_screen().x * 0.25, _screen().y * 0.75)
+	return _touch.move_stick_center()
 
 
 func _right_spot() -> Vector2:
-	return Vector2(_screen().x * 0.75, _screen().y * 0.75)
+	return _touch.aim_stick_center()
 
 
 func _mouse_click(point: Vector2, pressed: bool) -> void:
@@ -301,3 +304,82 @@ func _check_minimap_tap() -> void:
 	_report("tocar no minimapa abre o mapa grande, e tocar de novo fecha",
 		opened and closed,
 		"abriu=%s fechou=%s" % [opened, closed])
+
+
+func _check_static_sticks() -> void:
+	var move_center: Vector2 = _touch.move_stick_center()
+	var aim_center: Vector2 = _touch.aim_stick_center()
+	var radius: float = _touch.stick_radius()
+	var screen: Vector2 = _screen()
+	var anchored: bool = is_equal_approx(move_center.y, screen.y - float(TouchControls.STICK_MARGIN) - radius) \
+		and is_equal_approx(move_center.x, float(TouchControls.STICK_MARGIN) + radius) \
+		and is_equal_approx(aim_center.x, screen.x - float(TouchControls.STICK_MARGIN) - radius)
+
+	await _press(0, move_center + Vector2(46.0, 0.0))
+	await get_tree().process_frame
+	var pressed_right: bool = Input.is_action_pressed("move_right")
+	var strength: float = Input.get_action_strength("move_right")
+	var kept_center: bool = _touch.move_stick_center() == move_center
+	await _release(0, move_center + Vector2(46.0, 0.0))
+	await get_tree().process_frame
+	_report("os analogicos ficam fixos nos cantos de baixo e leem o dedo a partir do centro deles",
+		anchored and kept_center and pressed_right and strength > 0.5 and radius >= 54.0,
+		"raio=%.0f fixo=%s andou_sem_arrastar=%s forca=%.2f" % [
+			radius, anchored and kept_center, pressed_right, strength])
+
+
+func _check_dash_beside_aim() -> void:
+	var aim_center: Vector2 = _touch.aim_stick_center()
+	var center: Vector2 = _touch.dash_button_center()
+	var radius: float = _touch.dash_button_radius()
+	var offset: Vector2 = center - aim_center
+	var diagonal: bool = offset.x < -30.0 and offset.y < -30.0 \
+		and absf(absf(offset.x) - absf(offset.y)) < 6.0
+	var gap: float = offset.length() - _touch.stick_radius() - radius
+	var corner: Vector2 = center + Vector2(1.0, 1.0) * (radius + float(TouchControls.TOUCH_PADDING))
+	var ready_before: bool = _player.dash_ready()
+	await _press(0, corner)
+	await get_tree().process_frame
+	var round_edge: bool = _player.dash_ready()
+	await _release(0, corner)
+	await get_tree().process_frame
+	_report("o dash fica em diagonal ao lado do analogico de mira, redondo e fora da quina",
+		diagonal and gap > 0.0 and gap < 24.0 and radius >= 24.0 and ready_before and round_edge,
+		"desvio=(%.0f, %.0f) raio=%.0f folga=%.0f quina_ignorada=%s" % [
+			offset.x, offset.y, radius, gap, round_edge])
+
+
+func _check_flask_cell_size() -> void:
+	var bar: FlaskBar = _arena.hud.flask_bar()
+	var cell: Control = bar.cell_at(0)
+	var grew: bool = bar.slot_scale() == FlaskBar.TOUCH_SLOT_SCALE and cell != null \
+		and cell.custom_minimum_size.x >= float(FlaskBar.SLOT_WIDTH * FlaskBar.TOUCH_SLOT_SCALE)
+	var numbered: bool = false
+	if cell != null:
+		for sibling in cell.get_parent().get_children():
+			if sibling is Label:
+				numbered = true
+	var slots: int = GameManager.flask_slots
+	GameManager.flask_slots = 8
+	bar.refresh()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var low: Control = bar.cell_at(7)
+	var below_zone: bool = low != null \
+		and low.get_global_rect().get_center().y > _screen().y * TouchControls.ZONE_TOP_FRACTION
+	var walked: bool = false
+	if low != null:
+		var spot: Vector2 = low.get_global_rect().get_center()
+		await _press(0, spot)
+		await get_tree().process_frame
+		walked = Input.is_action_pressed("move_right") or Input.is_action_pressed("move_left") \
+			or Input.is_action_pressed("move_up") or Input.is_action_pressed("move_down")
+		await _release(0, spot)
+	GameManager.flask_slots = slots
+	bar.refresh()
+	await get_tree().process_frame
+	_report("no celular o slot do frasco fica maior, sem numero, e tocar nele nao anda",
+		grew and not numbered and below_zone and not walked,
+		"escala=%d largura=%.0f com_numero=%s segunda_fileira_na_zona=%s andou=%s" % [
+			bar.slot_scale(), cell.custom_minimum_size.x if cell != null else 0.0,
+			numbered, below_zone, walked])

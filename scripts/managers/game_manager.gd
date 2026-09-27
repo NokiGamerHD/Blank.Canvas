@@ -8,7 +8,7 @@ const TOUCH_MOUSE_GRACE_MS: int = 250
 
 const DISPLAY_NAME: String = "Blank Canvas"
 
-const VERSION: String = "3.7.0"
+const VERSION: String = "3.7.1"
 
 
 const SCENE_MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
